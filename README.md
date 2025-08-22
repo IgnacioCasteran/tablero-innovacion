@@ -80,6 +80,20 @@ Centralizar accesos y operaciones frecuentes del personal (carga de informes, co
 - Archivo `conexion.php` centraliza la conexión a MySQL/MariaDB.
 - Variables a parametrizar: host, base, usuario, password.
 
+## Requerimientos de ambiente
+
+El proyecto fue desarrollado y probado en el siguiente entorno:
+
+- **Sistema operativo (desarrollo):** Windows 10/11 con XAMPP
+- **Servidor web:** Apache 2.4.x
+- **PHP:** 8.2.x
+- **Base de datos:** MySQL/MariaDB 10.4+
+- **Extensiones PHP necesarias:** pdo, pdo_mysql, mbstring, openssl, json
+- **Control de versiones:** Git 2.46
+- **Frontend:** Bootstrap 5.3, JavaScript nativo
+
+> El script de base de datos se encuentra en `informes_pj.sql`.
+
 ## Estilos y UX
 
 - **Bootstrap 5** para layout y componentes.
