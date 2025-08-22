@@ -1,0 +1,83 @@
+html,
+body {
+  height: 100%;
+  background: linear-gradient(160deg, #f6dfd5, #f3e3db);
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.logo {
+  max-height: 280px;
+  margin-bottom: -1rem;
+  margin-top: -3rem;
+}
+
+.titulo {
+  font-weight: 800;
+  color: #2e2e2e;
+  text-transform: uppercase;
+  line-height: 1;
+  margin-top: -3.8rem;
+  letter-spacing: 1px;
+}
+
+.subtitulo {
+  font-weight: 400;
+  color: #5e5e5e;
+  margin-top: 0.3rem;
+}
+
+.btn-opcion {
+  display: block;
+  padding: 20px;
+  background-color: #fffdfc;
+  border-radius: 16px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  color: #1d1d1d;
+  font-size: 1.15rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  text-align: center;
+  border: 1px solid #eee;
+}
+
+.btn-opcion:hover {
+  background-color: #f9f1eb;
+  transform: scale(1.02);
+  color: #000;
+}
+
+.btn-agenda {
+  background-color: #ffe8d1;
+  border: 2px solid #f5c89d;
+}
+
+.btn-agenda:hover {
+  background-color: #ffd9b8;
+}
+
+.icon-img {
+  height: 32px;
+  vertical-align: middle;
+  margin-right: 10px;
+  margin-top: -4px;
+}
+
+.card-hover {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+}
+
+.card-hover:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.card-hover img {
+  transition: transform 0.3s ease;
+}
+
+.card-hover:hover img {
+  transform: scale(1.05) rotate(-1deg);
+}
+

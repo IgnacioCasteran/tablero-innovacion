@@ -1,0 +1,108 @@
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #fef6f0;
+}
+
+#calendar {
+    max-width: 1050px;
+    margin: 40px auto;
+    padding: 25px;
+    background-color: white;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+}
+
+.fc .fc-toolbar-title {
+    font-size: 2rem;
+    color: #722F37;
+    font-weight: bold;
+}
+
+.fc .fc-button-primary {
+    background-color: #a0323e;
+    border: none;
+    border-radius: 6px;
+    padding: 0.4em 1em;
+    font-weight: bold;
+}
+
+.fc .fc-button-primary:hover {
+    background-color: #8b2934;
+}
+
+.fc .fc-daygrid-day-number {
+    font-weight: bold;
+    color: #4e4e4e;
+}
+
+.swal2-title {
+    font-size: 1.4rem;
+    color: #722F37;
+}
+
+.swal2-input, .swal2-textarea {
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+.swal2-confirm {
+    background-color: #a0323e !important;
+}
+
+/* 🔘 Cuando pasás por un día */
+.fc-daygrid-day:hover {
+    background-color: #f0f8ff;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+/* 📅 Cambiar el color del día actual */
+.fc-day-today {
+    background-color: #ffefd5 !important;  /* más amarillo pastel */
+    border: 2px solid #e77d11 !important;  /* naranja fuerte */
+    box-shadow: inset 0 0 8px #e77d11;     /* efecto de brillo */
+    font-weight: bold;
+    color: #a0323e;
+}
+
+/* 🟦 Evento visual más suave */
+.fc-event {
+    background-color: #007bff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9em;
+    padding: 2px 4px;
+}
+
+.fc-event:hover {
+    background-color: #0056b3;
+    cursor: pointer;
+}
+
+/* 🧭 Encabezado del mes */
+.fc-toolbar-title {
+    font-size: 1.8em;
+    color: #6c4c41;
+    font-weight: bold;
+}
+
+/* 📅 Encabezados de los días */
+.fc-col-header-cell-cushion {
+    color: #5e5e5e;
+    font-weight: 600;
+}
+
+/* ⚙️ Botones de navegación */
+.fc .fc-button {
+    background-color: #6c4c41;
+    border: none;
+}
+
+.fc .fc-button:hover {
+    background-color: #8e6258;
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active {
+    background-color: #a66f60;
+}
