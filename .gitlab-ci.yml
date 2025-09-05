@@ -33,6 +33,7 @@ deploy:
   image: alpine:latest
   before_script:
     - apk add --no-cache openssh
+    - chmod og= $SSH_KEY_DOCKER_01
   script:
     - echo "🚀 Deploy en servidor"
     - ssh -o StrictHostKeyChecking=no -i $SSH_KEY_DOCKER_01 $DEPLOY_USER@$IP_ADDRESS_DOCKER_01 "
