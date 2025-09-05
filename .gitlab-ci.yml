@@ -41,7 +41,7 @@ deploy:
         docker pull $DOCKER_IMAGE:latest &&
         docker stop tablero-innovacion || true &&
         docker rm tablero-innovacion || true &&
-        docker run -d --name tablero-innovacion -p 80:8089 --env-file /opt/tablero-innovacion/.env $DOCKER_IMAGE:latest
+        docker run -d --name tablero-innovacion -p 8089:80 --env-file /opt/tablero-innovacion/.env $DOCKER_IMAGE:latest
       "
   tags:
     - dind
