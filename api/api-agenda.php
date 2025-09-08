@@ -1,21 +1,28 @@
 <?php
-$conexion = new mysqli("localhost", "root", "", "informes_pj");
-$conexion->set_charset("utf8");
+// api/api-agenda.php
+header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/../conexion.php';
 
-$resultado = $conexion->query("SELECT * FROM eventos");
+try {
+  $cn = db();
 
-$eventos = [];
+  $sql = "SELECT id, titulo, fecha, descripcion FROM eventos ORDER BY fecha DESC";
+  $res = $cn->query($sql);
 
-while ($fila = $resultado->fetch_assoc()) {
+  $eventos = [];
+  while ($fila = $res->fetch_assoc()) {
     $eventos[] = [
-        'id' => $fila['id'],
-        'title' => $fila['titulo'],
-        'start' => $fila['fecha'],
-        'extendedProps' => [
-            'descripcion' => $fila['descripcion']
-        ]
+      'id'    => (int)$fila['id'],
+      'title' => $fila['titulo'],
+      'start' => $fila['fecha'],      // ISO (YYYY-MM-DD o YYYY-MM-DD HH:mm:ss)
+      'extendedProps' => [
+        'descripcion' => $fila['descripcion']
+      ],
     ];
+  }
+
+  echo json_encode($eventos, JSON_UNESCAPED_UNICODE);
+} catch (Throwable $e) {
+  http_response_code(500);
+  echo json_encode(['error' => 'DB error']);
 }
-
-echo json_encode($eventos);
-
