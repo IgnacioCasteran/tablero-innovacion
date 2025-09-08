@@ -1,28 +1,58 @@
 <?php
+// login.php (raíz)
 session_start();
-$conexion = new mysqli("localhost", "root", "", "informes_pj");
+require_once __DIR__ . '/conexion.php';
 
-if ($conexion->connect_error) {
-  die("Error de conexión: " . $conexion->connect_error);
+try {
+  $cn = db(); // usa la conexión centralizada (lee .env)
+} catch (Throwable $e) {
+  // En prod no mostramos detalle
+  header('Location: login.html?error=db');
+  exit;
 }
 
-$email = $_POST['email'];
-$password = $_POST['password'];
+// 1) Tomar datos
+$email = trim($_POST['email'] ?? '');
+$pass  = $_POST['password'] ?? '';
 
-$sql = "SELECT * FROM usuarios WHERE email = ?";
-$stmt = $conexion->prepare($sql);
-$stmt->bind_param("s", $email);
+if ($email === '' || $pass === '') {
+  header('Location: login.html?error=campos');
+  exit;
+}
+
+// 2) Buscar usuario (ajusta nombres si hace falta)
+$stmt = $cn->prepare('SELECT id, nombre, email, password FROM usuarios WHERE email = ? LIMIT 1');
+$stmt->bind_param('s', $email);
 $stmt->execute();
-$resultado = $stmt->get_result();
+$res = $stmt->get_result();
+$user = $res->fetch_assoc();
 
-if ($resultado->num_rows === 1) {
-  $usuario = $resultado->fetch_assoc();
-  if (password_verify($password, $usuario['password'])) {
-    $_SESSION['usuario'] = $usuario['nombre'];
-    header("Location: informe-registrados.php");
-    exit();
-  }
+if (!$user) {
+  header('Location: login.html?error=cred');
+  exit;
 }
 
-echo "<script>window.location.href='login.html?error=1';</script>";
+// 3) Verificar contraseña
+$hash = $user['password'] ?? '';
+$ok = false;
 
+// Si está hasheada con bcrypt:
+if (strlen($hash) && preg_match('/^\$2y\$/', $hash)) {
+  $ok = password_verify($pass, $hash);
+} else {
+  // Si por ahora está en texto plano:
+  $ok = ($pass === $hash);
+}
+
+if (!$ok) {
+  header('Location: login.html?error=cred');
+  exit;
+}
+
+// 4) Login OK
+session_regenerate_id(true);
+$_SESSION['usuario_id'] = (int)$user['id'];
+$_SESSION['usuario']    = $user['nombre'] ?? $user['email'];
+
+header('Location: index.php');
+exit;

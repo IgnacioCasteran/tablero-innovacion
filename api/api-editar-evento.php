@@ -1,36 +1,35 @@
 <?php
-header('Content-Type: application/json');
+// api/api-editar-evento.php
+header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/../conexion.php';
 
-// Conexión a la base de datos
-$conexion = new mysqli("localhost", "root", "", "informes_pj");
-
-if ($conexion->connect_error) {
-    echo json_encode(['success' => false, 'error' => 'Error de conexión']);
-    exit;
+try {
+  $cn = db();
+} catch (Throwable $e) {
+  http_response_code(500);
+  echo json_encode(['success' => false, 'error' => 'DB error']);
+  exit;
 }
 
-// Obtener datos desde el JSON del cuerpo de la petición
-$data = json_decode(file_get_contents("php://input"), true);
-
+// Datos desde JSON
+$data = json_decode(file_get_contents('php://input'), true);
 if (!$data || !isset($data['id'], $data['titulo'], $data['descripcion'], $data['fecha'])) {
-    echo json_encode(['success' => false, 'error' => 'Datos incompletos']);
-    exit;
+  http_response_code(400);
+  echo json_encode(['success' => false, 'error' => 'Datos incompletos']);
+  exit;
 }
 
-$id = $conexion->real_escape_string($data['id']);
-$titulo = $conexion->real_escape_string($data['titulo']);
-$descripcion = $conexion->real_escape_string($data['descripcion']);
-$fecha = $conexion->real_escape_string($data['fecha']);
+$id          = (int)$data['id'];
+$titulo      = $data['titulo'];
+$descripcion = $data['descripcion'];
+$fecha       = $data['fecha']; // YYYY-MM-DD o YYYY-MM-DD HH:mm:ss
 
-// Actualizar evento en la base de datos
-$sql = "UPDATE eventos SET titulo = '$titulo', descripcion = '$descripcion', fecha = '$fecha' WHERE id = '$id'";
+$stmt = $cn->prepare('UPDATE eventos SET titulo = ?, descripcion = ?, fecha = ? WHERE id = ?');
+$stmt->bind_param('sssi', $titulo, $descripcion, $fecha, $id);
 
-if ($conexion->query($sql) === TRUE) {
-    echo json_encode(['success' => true]);
+if ($stmt->execute()) {
+  echo json_encode(['success' => true]);
 } else {
-    echo json_encode(['success' => false, 'error' => $conexion->error]);
+  http_response_code(500);
+  echo json_encode(['success' => false, 'error' => $stmt->error]);
 }
-
-$conexion->close();
-
-
