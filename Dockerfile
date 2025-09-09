@@ -1,23 +1,23 @@
 FROM php:8.2-apache
 
-# Instala dependencias del sistema necesarias para compilar extensiones
+# Dependencias (mbstring ya no requiere onig, pero lo dejamos si querés)
 RUN apt-get update && apt-get install -y \
     libonig-dev \
     libzip-dev \
-    && docker-php-ext-install pdo_mysql mbstring \
+    && docker-php-ext-install mysqli pdo_mysql mbstring \
     && rm -rf /var/lib/apt/lists/*
 
-# Habilita mod_rewrite de Apache
+# Habilita mod_rewrite
 RUN a2enmod rewrite
 
-# Copia el código de la aplicación
+# Copia la app
 WORKDIR /var/www/html
 COPY . .
 
-# Ajusta permisos (si tu app necesita escritura en alguna carpeta)
-RUN chown -R www-data:www-data /var/www/html
+# Crea carpeta de logs de app y ajusta permisos
+RUN mkdir -p /var/www/html/logs && chown -R www-data:www-data /var/www/html
 
-# Copia la configuración del vhost
+# Vhost
 COPY ./apache/http.conf /etc/apache2/sites-available/000-default.conf
 
 CMD ["apache2-foreground"]
