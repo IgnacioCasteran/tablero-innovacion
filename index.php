@@ -1,7 +1,7 @@
 <?php
 session_start();
 if (!isset($_SESSION['usuario'])) {
-    header("Location: login/login.html");
+    header("Location: /login/login.html");
     exit();
 }
 ?>
@@ -21,7 +21,7 @@ if (!isset($_SESSION['usuario'])) {
 <body>
     <!-- Botón cerrar sesión arriba a la derecha -->
     <div class="container mt-3 d-flex justify-content-end">
-        <a href="login/logout.php" class="btn btn-danger btn-sm">
+        <a href="/login/logout.php" class="btn btn-danger btn-sm">
             <i class="bi bi-box-arrow-right"></i>
             Cerrar sesión (<?php echo $_SESSION['usuario']; ?>)
         </a>

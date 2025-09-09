@@ -6,7 +6,7 @@ require_once __DIR__ . '/../conexion.php';
 try {
   $cn = db(); // usa la conexión centralizada (lee .env)
 } catch (Throwable $e) {
-  header('Location: login.html?error=db');
+  header('Location: /login/login.html?error=db');
   exit;
 }
 
@@ -15,7 +15,7 @@ $email = trim($_POST['email'] ?? '');
 $pass  = $_POST['password'] ?? '';
 
 if ($email === '' || $pass === '') {
-  header('Location: login.html?error=campos');
+  header('Location: /login/login.html?error=campos');
   exit;
 }
 
@@ -27,7 +27,7 @@ $res  = $stmt->get_result();
 $user = $res->fetch_assoc();
 
 if (!$user) {
-  header('Location: login.html?error=cred');
+  header('Location: /login/login.html?error=cred');
   exit;
 }
 
@@ -44,7 +44,7 @@ if (strlen($hash) && preg_match('/^\$2y\$/', $hash)) {
 }
 
 if (!$ok) {
-  header('Location: login.html?error=cred');
+  header('Location: /login/login.html?error=cred');
   exit;
 }
 
@@ -53,7 +53,7 @@ session_regenerate_id(true);
 $_SESSION['usuario_id'] = (int)$user['id'];
 $_SESSION['usuario']    = $user['nombre'] ?? $user['email'];
 
-header('Location: ../index.php');
+header('Location: /index.php');
 exit;
 
 
