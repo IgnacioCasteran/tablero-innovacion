@@ -5,6 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const cardsWrap = document.getElementById("cardsProyectos"); // existe solo si agregaste las cards en el HTML
   const form = document.getElementById("formProyecto");
   const formEditar = document.getElementById("formEditar");
+  const DL = "/descargas/proyecto.php?f=";
 
   obtenerProyectos();
 
@@ -32,7 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <td>${escapeHtml(p.fecha || "")}</td>
         <td>${escapeHtml(p.descripcion || "")}</td>
         <td class="text-nowrap">
-          ${p.ficha ? `<a href="../uploads/proyectos/${encodeURIComponent(p.ficha)}" target="_blank" class="btn btn-sm btn-primary mb-1">📄 Ver ficha</a> ` : ""}
+          ${p.ficha ? `<a href="${DL}${encodeURIComponent(p.ficha)}" target="_blank" class="btn btn-sm btn-primary mb-1">📄 Ver ficha</a> ` : ""}
           <button class="btn btn-warning btn-sm me-2 btn-editar"
             data-id="${p.id}"
             data-titulo="${attr(p.titulo)}"
@@ -73,7 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <div><strong>Resp.:</strong> ${responsable || "—"}</div>
           <div><strong>Fecha:</strong> ${fecha || "—"}</div>
           ${descripcion ? `<div class="full pj-meta"><strong>Desc.:</strong> ${descripcion}</div>` : ""}
-          ${ficha ? `<div class="full"><a href="../uploads/proyectos/${ficha}" target="_blank" class="btn btn-sm btn-primary">Ver ficha</a></div>` : ""}
+          ${ficha ? `<div class="full"><a href="${DL}${ficha}" target="_blank" class="btn btn-sm btn-primary">Ver ficha</a></div>` : ""}
         </div>
         <div class="pj-actions">
           <button class="btn btn-sm btn-warning btn-editar"
@@ -128,7 +129,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const fichaActual = document.getElementById("ficha-actual");
     if (p.ficha && p.ficha !== "null") {
       const safe = escapeHtml(p.ficha);
-      fichaActual.innerHTML = `<a href="../uploads/proyectos/${encodeURIComponent(p.ficha)}" target="_blank">${safe}</a>`;
+      fichaActual.innerHTML = `<a href="${DL}${encodeURIComponent(p.ficha)}" target="_blank">${safe}</a>`;
     } else {
       fichaActual.textContent = "No hay ficha cargada actualmente.";
     }
