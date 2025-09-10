@@ -120,7 +120,7 @@ if (!isset($_SESSION['usuario'])) {
 <body>
   <div class="container py-5">
     <div class="text-center mb-4">
-      <img src="../icons/icon-proyectos.png" style="max-width: 80px;">
+      <img src="../img/icon-proyectos.png" style="max-width: 80px;">
       <h2 class="mt-2">Gestión de Proyectos</h2>
       <p class="text-muted">Alta, edición y eliminación de proyectos</p>
     </div>

@@ -37,40 +37,40 @@ if (!isset($_SESSION['usuario'])) {
                 <div class="row g-4 justify-content-center">
                     <div class="col-md-5">
                         <a href="/secciones/coordinacion.php" class="btn-opcion">
-                            <img src="/icons/icon-oficinas.png" alt="" class="icon-img me-2">
+                            <img src="/img/icon-oficinas.png" alt="" class="icon-img me-2">
                             Coordinación de Oficinas Judiciales
                         </a>
                     </div>
                     <div class="col-md-5">
                         <a href="/secciones/proyectos.php" class="btn-opcion">
-                            <img src="/icons/icon-proyectos.png" alt="" class="icon-img me-2">
+                            <img src="/img/icon-proyectos.png" alt="" class="icon-img me-2">
                             Proyectos
                         </a>
                     </div>
 
                     <div class="col-md-5">
                         <a href="/secciones/intervenciones.php" class="btn-opcion">
-                            <img src="/icons/psychology.png" alt="" class="icon-img me-2">
+                            <img src="/img/psychology.png" alt="" class="icon-img me-2">
                             Intervenciones Psicosociales
                         </a>
                     </div>
                     <div class="col-md-5">
                         <a href="#" class="btn-opcion">
-                            <img src="/icons/icon-laboratorio.png" alt="" class="icon-img me-2">
+                            <img src="/img/icon-laboratorio.png" alt="" class="icon-img me-2">
                             Laboratorio de Innovación Judicial
                         </a>
                     </div>
 
                     <div class="col-md-5">
                         <a href="/secciones/sgc.php" class="btn-opcion">
-                            <img src="/icons/icon-sgc.png" alt="" class="icon-img me-2">
+                            <img src="/img/icon-sgc.png" alt="" class="icon-img me-2">
                             SGC
                         </a>
                     </div>
 
                     <div class="col-12">
                         <a href="/secciones/agenda.php" class="btn-opcion btn-agenda">
-                            <img src="/icons/icon-agenda.png" alt="" class="icon-img me-2">
+                            <img src="/img/icon-agenda.png" alt="" class="icon-img me-2">
                             Agenda
                         </a>
                     </div>
