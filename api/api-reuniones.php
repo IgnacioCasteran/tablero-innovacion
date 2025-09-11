@@ -17,9 +17,25 @@ $method = $_SERVER['REQUEST_METHOD'];
 // Utils
 $uploadDir = realpath(__DIR__ . '/../uploads') ?: (__DIR__ . '/../uploads');
 $uploadReu = $uploadDir . '/reuniones';
-if (!is_dir($uploadReu)) { @mkdir($uploadReu, 0777, true); }
+if (!is_dir($uploadReu)) {
+  @mkdir($uploadReu, 0777, true);
+}
 
-function safe_filename($name) {
+// Convierte '' o dd/mm/aaaa => NULL o yyyy-mm-dd
+function to_mysql_date_or_null($s): ?string
+{
+  if ($s === null) return null;
+  $s = trim((string)$s);
+  if ($s === '') return null; // <-- vacío => NULL
+  if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $s, $m)) {
+    return "{$m[3]}-{$m[2]}-{$m[1]}";
+  }
+  return $s; // ya viene yyyy-mm-dd
+}
+
+
+function safe_filename($name)
+{
   $name = preg_replace('/[^\w\-.]+/u', '_', $name);
   return $name ?: ('archivo_' . uniqid());
 }
@@ -34,8 +50,8 @@ if ($method === 'POST') {
   $tarea        = $_POST['tarea']        ?? '';
   $estado       = $_POST['estado']       ?? null;
   $notas        = $_POST['notas']        ?? null;
-  $fecha_inicio = $_POST['fecha_inicio'] ?? null;
-  $fecha_fin    = $_POST['fecha_fin']    ?? null;
+  $fecha_inicio = to_mysql_date_or_null($_POST['fecha_inicio'] ?? null);
+  $fecha_fin    = to_mysql_date_or_null($_POST['fecha_fin']    ?? null);
   $asistentes   = $_POST['asistentes']   ?? null;
 
   if ($tipo === '' || $tarea === '') {
@@ -74,7 +90,9 @@ if ($method === 'POST') {
 
       if (!empty($archivoAnt)) {
         $rutaAnt = $uploadReu . '/' . $archivoAnt;
-        if (is_file($rutaAnt)) { @unlink($rutaAnt); }
+        if (is_file($rutaAnt)) {
+          @unlink($rutaAnt);
+        }
       }
     }
 
@@ -85,7 +103,15 @@ if ($method === 'POST') {
       $stmt = $cn->prepare($sql);
       $stmt->bind_param(
         'ssssssssi',
-        $tipo, $tarea, $estado, $notas, $fecha_inicio, $fecha_fin, $asistentes, $archivoNuevo, $id
+        $tipo,
+        $tarea,
+        $estado,
+        $notas,
+        $fecha_inicio,
+        $fecha_fin,
+        $asistentes,
+        $archivoNuevo,
+        $id
       );
     } else {
       $sql = "UPDATE reuniones_actividades
@@ -94,7 +120,14 @@ if ($method === 'POST') {
       $stmt = $cn->prepare($sql);
       $stmt->bind_param(
         'sssssssi',
-        $tipo, $tarea, $estado, $notas, $fecha_inicio, $fecha_fin, $asistentes, $id
+        $tipo,
+        $tarea,
+        $estado,
+        $notas,
+        $fecha_inicio,
+        $fecha_fin,
+        $asistentes,
+        $id
       );
     }
 
@@ -113,7 +146,14 @@ if ($method === 'POST') {
   $stmt = $cn->prepare($sql);
   $stmt->bind_param(
     'ssssssss',
-    $tipo, $tarea, $estado, $notas, $fecha_inicio, $fecha_fin, $asistentes, $archivoNuevo
+    $tipo,
+    $tarea,
+    $estado,
+    $notas,
+    $fecha_inicio,
+    $fecha_fin,
+    $asistentes,
+    $archivoNuevo
   );
 
   if ($stmt->execute()) {
@@ -157,7 +197,9 @@ if ($method === 'DELETE') {
     // Borrar archivo si existía
     if (!empty($archivo)) {
       $ruta = $uploadReu . '/' . $archivo;
-      if (is_file($ruta)) { @unlink($ruta); }
+      if (is_file($ruta)) {
+        @unlink($ruta);
+      }
     }
     echo json_encode(['mensaje' => 'Registro eliminado correctamente']);
   } else {
@@ -170,4 +212,3 @@ if ($method === 'DELETE') {
 // Si llega otro método:
 http_response_code(405);
 echo json_encode(['error' => 'Método no permitido']);
-
