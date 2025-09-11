@@ -38,7 +38,7 @@ if (!isset($_SESSION['usuario'])) {
 <body>
   <div class="container py-5 text-center">
     <div class="cabecera-oficina">
-      <img src="../img/oficinas/familia.png" alt="Oficina de Gestión Judicial de Familia" />
+      <img src="../img/familia.png" alt="Oficina de Gestión Judicial de Familia" />
       <h2 class="titulo-verde">Oficina de Gestión Judicial de Familia</h2>
       <h5 class="text-muted">Iª Circunscripción Judicial</h5>
     </div>
