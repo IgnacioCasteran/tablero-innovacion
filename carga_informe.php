@@ -79,13 +79,14 @@ if (!isset($_SESSION['usuario'])) {
             <label for="rubro" class="form-label">Rubro</label>
             <select class="form-select" id="rubro">
               <option value="" disabled selected hidden>Seleccionar</option>
-              <option value="organizacion">Organización</option>
-              <option value="rrhh">RRHH</option>
-              <option value="sistemas">Sistemas</option>
-              <option value="comunicacion">Comunicación</option>
-              <option value="recursos">Recursos</option>
+              <option value="Organización">Organización</option>
+              <option value="RRHH">RRHH</option>
+              <option value="Sistemas">Sistemas</option>
+              <option value="Comunicación">Comunicación</option>
+              <option value="Recursos">Recursos</option>
             </select>
           </div>
+
 
           <!-- Categoría -->
           <div class="mb-3" id="categoriaGroup">
