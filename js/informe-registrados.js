@@ -1,3 +1,18 @@
+// --- Normalización de Rubro ---
+const RUBRO_MAP = {
+  'organizacion': 'Organización',
+  'rrhh': 'RRHH',
+  'sistemas': 'Sistemas',
+  'comunicacion': 'Comunicación',
+  'recursos': 'Recursos',
+  'recursos humanos': 'Recursos Humanos'
+};
+function prettyRubro(v) {
+  if (v == null) return '';
+  const key = String(v).trim().toLowerCase();
+  return RUBRO_MAP[key] ?? v;
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   cargarInformes();
 
@@ -72,10 +87,17 @@ async function cargarInformes() {
   try {
     const response = await fetch("obtener_informes.php");
     const datos = await response.json();
+
+    // Normalizamos rubro para mostrar/filtrar/graficar
+    const datosCanon = datos.map(d => ({
+      ...d,
+      rubro: prettyRubro(d.rubro)
+    }));
+
     const tbody = document.getElementById("cuerpoTabla");
     tbody.innerHTML = "";
 
-    datos.forEach((informe) => {
+    datosCanon.forEach((informe) => {
       const fila = document.createElement("tr");
 
       fila.innerHTML = `
@@ -84,45 +106,46 @@ async function cargarInformes() {
       <td>${informe.responsable}</td>
       <td>${informe.desde}</td>
       <td>${informe.hasta}</td>
-      <td>${informe.rubro}</td>
+      <td>${informe.rubro}</td>           <!-- ya capitalizado -->
       <td>${informe.categoria}</td>
       <td>${informe.empleado}</td>
       <td>${informe.estado}</td>
       <td>${informe.descripcion}</td>
       <td>${informe.observaciones}</td>
       <td class="text-center">
-      <div class="dropdown">
-      <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-        Acciones
-      </button>
-      <ul class="dropdown-menu">
-        <li>
-          <a class="dropdown-item text-warning" href="#" onclick="abrirModalEditar(${JSON.stringify(informe).replace(/"/g, '&quot;')})">
-            ✏️ Editar
-          </a>
-        </li>
-        <li>
-          <a class="dropdown-item text-danger" href="#" onclick="abrirModalEliminar(${informe.id})">
-            🗑️ Eliminar
-          </a>
-        </li>
-      </ul>
-      </div>
+        <div class="dropdown">
+          <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            Acciones
+          </button>
+          <ul class="dropdown-menu">
+            <li>
+              <a class="dropdown-item text-warning" href="#" onclick="abrirModalEditar(${JSON.stringify(informe).replace(/"/g, '&quot;')})">
+                ✏️ Editar
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item text-danger" href="#" onclick="abrirModalEliminar(${informe.id})">
+                🗑️ Eliminar
+              </a>
+            </li>
+          </ul>
+        </div>
       </td>
       `;
 
       tbody.appendChild(fila);
     });
 
-        // ⚠️ Este es el punto clave: pasamos los datos a filtros.js
+    // Pasamos los datos ya normalizados a filtros/gráficos
     if (typeof setDatos === "function") {
-      setDatos(datos); // ← actualiza datosGlobales y activa los filtros
+      setDatos(datosCanon);
     }
   } catch (error) {
     console.error("Error al obtener informes:", error);
     alert("No se pudieron cargar los informes.");
   }
 }
+
 
 function abrirModalEditar(informe) {
   document.getElementById("editarId").value = informe.id;
