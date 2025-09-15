@@ -62,6 +62,7 @@ if (!isset($_SESSION['usuario'])) {
             <input type="text" class="form-control" id="responsable" placeholder="Nombre del responsable" />
           </div>
 
+
           <div class="row mb-3">
             <div class="col">
               <label for="desde" class="form-label">Desde</label>
@@ -73,20 +74,40 @@ if (!isset($_SESSION['usuario'])) {
             </div>
           </div>
 
+          <!-- Rubro -->
           <div class="mb-3">
             <label for="rubro" class="form-label">Rubro</label>
-            <input type="text" class="form-control" id="rubro" />
+            <select class="form-select" id="rubro">
+              <option value="" disabled selected hidden>Seleccionar</option>
+              <option value="organizacion">Organización</option>
+              <option value="rrhh">RRHH</option>
+              <option value="sistemas">Sistemas</option>
+              <option value="comunicacion">Comunicación</option>
+              <option value="recursos">Recursos</option>
+            </select>
           </div>
 
-          <div class="mb-3">
-            <label for="categoria" class="form-label">Categoría</label>
-            <input type="text" class="form-control" id="categoria" />
+          <!-- Categoría -->
+          <div class="mb-3" id="categoriaGroup">
+            <label class="form-label">Categoría</label>
+            <!-- Select dinámico (oculto por defecto) -->
+            <select class="form-select d-none" id="categoriaSelect">
+              <option value="" disabled selected hidden>Seleccionar</option>
+            </select>
+            <!-- Input libre (visible si la oficina NO tiene categorías predefinidas) -->
+            <input type="text" class="form-control" id="categoriaInput" placeholder="Escribí la categoría" />
           </div>
 
+
+          <!-- Empleado -->
           <div class="mb-3">
             <label for="empleado" class="form-label">Empleado</label>
-            <input type="text" class="form-control" id="empleado" />
+            <select class="form-select" id="empleado">
+              <option value="" disabled selected hidden>Seleccionar</option>
+              <!-- Se completa dinámicamente según Oficina/Circunscripción -->
+            </select>
           </div>
+
 
           <div class="mb-3">
             <label for="descripcion" class="form-label">Descripción</label>
@@ -166,6 +187,10 @@ if (!isset($_SESSION['usuario'])) {
           oficinaSelect.appendChild(option);
         });
       }
+
+      oficinaSelect.value = "";
+      if (typeof actualizarCategorias === "function") actualizarCategorias();
+      if (typeof actualizarEmpleados === "function") actualizarEmpleados();
     }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
