@@ -1,273 +1,244 @@
 <?php
-// api-proyectos.php (multi-archivo)
-
+// api/api-proyectos.php
 header('Content-Type: application/json; charset=utf-8');
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 
-// Responder preflight CORS
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
+// Preflight
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+  http_response_code(204);
+  exit;
+}
 
-$host = 'localhost';
-$db = 'informes_pj';
-$user = 'root';
-$pass = '';
+require_once __DIR__ . '/../conexion.php';
 
-$conn = new mysqli($host, $user, $pass, $db);
-if ($conn->connect_error) {
+try {
+  $cn = db();
+} catch (Throwable $e) {
   http_response_code(500);
-  echo json_encode(['error' => 'Error de conexión a la base de datos']);
+  echo json_encode(['error' => 'DB error']);
   exit;
 }
 
-// --- Helpers ---
-function ensure_attachments_table($conn) {
-  $sql = "CREATE TABLE IF NOT EXISTS proyecto_archivos (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            proyecto_id INT NOT NULL,
-            nombre_original VARCHAR(255) NOT NULL,
-            archivo VARCHAR(255) NOT NULL,
-            mime VARCHAR(127) DEFAULT NULL,
-            size INT DEFAULT NULL,
-            creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (proyecto_id) REFERENCES proyectos(id) ON DELETE CASCADE
-          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
-  $conn->query($sql);
+$method     = $_SERVER['REQUEST_METHOD'];
+$uploadDir  = realpath(__DIR__ . '/../uploads') ?: (__DIR__ . '/../uploads');
+$uploadProy = $uploadDir . '/proyectos';
+
+// Asegura carpeta destino
+if (!is_dir($uploadProy)) {
+  @mkdir($uploadProy, 0777, true);
 }
 
-function project_dir($projectId) {
-  $base = realpath(__DIR__ . '/../uploads') ?: (__DIR__ . '/../uploads');
-  $dir = $base . '/proyectos/' . intval($projectId) . '/';
-  if (!is_dir($dir)) { @mkdir($dir, 0777, true); }
-  return $dir;
+// Nombre de archivo seguro
+function safe_filename($name) {
+  $name = preg_replace('/[^\w\-.]+/u', '_', $name); // letras, números, _ - .
+  return $name ?: ('file_' . uniqid());
 }
 
-function sanitize_name($name) {
-  $name = preg_replace('/[^\w\-. ]+/u', '_', $name);
-  return substr($name, 0, 200);
-}
-
-function save_files($conn, $projectId, $field = 'fichas') {
-  if (!isset($_FILES[$field])) return 0;
-
-  // ⛔ Bloqueamos solo extensiones peligrosas (scripts/ejecutables)
-  $deny = [
-    'php','phtml','phar','cgi','pl','exe','bat','cmd','com','sh','bash','zsh',
-    'js','jse','jar','vb','vbs','ps1','psm1','msi','msp','scr','apk','dll','so','dylib','jsp','asp','aspx','hta'
-  ];
-
-  $dir = project_dir($projectId);
-  $count = 0;
-
-  // Normalizar estructura cuando viene un único archivo
-  $files = $_FILES[$field];
-  $names = is_array($files['name']) ? $files['name'] : [$files['name']];
-  $tmps  = is_array($files['tmp_name']) ? $files['tmp_name'] : [$files['tmp_name']];
-  $errs  = is_array($files['error']) ? $files['error'] : [$files['error']];
-  $sizes = is_array($files['size']) ? $files['size'] : [$files['size']];
-  $types = is_array($files['type']) ? $files['type'] : [$files['type']];
-
-  // Para guardar MIME real
-  $finfo = function_exists('finfo_open') ? finfo_open(FILEINFO_MIME_TYPE) : null;
-
-  $stmt = $conn->prepare(
-    "INSERT INTO proyecto_archivos (proyecto_id, nombre_original, archivo, mime, size) VALUES (?,?,?,?,?)"
-  );
-
-  for ($i = 0; $i < count($names); $i++) {
-    if ($errs[$i] !== UPLOAD_ERR_OK) continue;
-
-    $orig = sanitize_name($names[$i]);
-    $ext  = strtolower(pathinfo($orig, PATHINFO_EXTENSION));
-
-    // Bloqueo de extensiones peligrosas
-    if ($ext !== '' && in_array($ext, $deny, true)) {
-      // saltamos este archivo por seguridad
-      continue;
-    }
-
-    // Nombre único (mantenemos extensión si existe)
-    $unique = uniqid('adj_', true) . ($ext ? ".$ext" : '');
-    $dest   = $dir . $unique;
-
-    if (move_uploaded_file($tmps[$i], $dest)) {
-      $mime = $finfo ? @finfo_file($finfo, $dest) : ($types[$i] ?? null);
-      $size = (int)$sizes[$i];
-      $pid  = (int)$projectId;
-      $stmt->bind_param("isssi", $pid, $orig, $unique, $mime, $size);
-      $stmt->execute();
-      $count++;
-    }
-  }
-
-  if ($finfo) finfo_close($finfo);
-  $stmt->close();
-  return $count;
-}
-
-
-function delete_project_files($conn, $projectId) {
-  $pid = (int)$projectId;
-  $res = $conn->query("SELECT archivo FROM proyecto_archivos WHERE proyecto_id = $pid");
-  $dir = project_dir($pid);
-  while ($row = $res->fetch_assoc()) {
-    $path = $dir . $row['archivo'];
-    if (is_file($path)) @unlink($path);
-  }
-  // Los registros se van por ON DELETE CASCADE si borramos el proyecto
-  // Limpieza de carpeta (opcional)
-  @rmdir($dir);
-}
-
-// Aseguramos tabla de adjuntos
-ensure_attachments_table($conn);
-
-$method = $_SERVER['REQUEST_METHOD'];
-
-// --- Rutas especiales ---
-if ($method === 'GET' && isset($_GET['archivos'])) {
-  $pid = intval($_GET['archivos']);
-  $stmt = $conn->prepare("SELECT id, proyecto_id, nombre_original, archivo, mime, size, creado_en
-                          FROM proyecto_archivos WHERE proyecto_id = ? ORDER BY creado_en DESC");
-  $stmt->bind_param("i", $pid);
-  $stmt->execute();
-  $res = $stmt->get_result();
-  $out = [];
-  while ($row = $res->fetch_assoc()) $out[] = $row;
-  echo json_encode($out);
-  exit;
-}
-
-if ($method === 'DELETE' && isset($_GET['file_id'])) {
-  $fid = intval($_GET['file_id']);
-  // obtener info
-  $stmt = $conn->prepare("SELECT proyecto_id, archivo FROM proyecto_archivos WHERE id=?");
-  $stmt->bind_param("i", $fid);
-  $stmt->execute();
-  $stmt->bind_result($pid, $archivo);
-  if ($stmt->fetch()) {
-    $stmt->close();
-    // borrar archivo físico
-    $path = project_dir($pid) . $archivo;
-    if (is_file($path)) @unlink($path);
-    // borrar registro
-    $stmt2 = $conn->prepare("DELETE FROM proyecto_archivos WHERE id=?");
-    $stmt2->bind_param("i", $fid);
-    $ok = $stmt2->execute();
-    $stmt2->close();
-    echo json_encode(['success' => $ok]);
+// Helper para adjuntar URL segura de descarga
+function with_url_ficha(array $row) {
+  if (!empty($row['ficha'])) {
+    $row['url_ficha'] = '/descargas/proyecto.php?f=' . rawurlencode($row['ficha']);
   } else {
-    echo json_encode(['success' => false]);
+    $row['url_ficha'] = null;
   }
-  exit;
+  return $row;
 }
 
-// --- Flujo principal ---
 switch ($method) {
-  case 'GET': {
-    $result = $conn->query("SELECT * FROM proyectos ORDER BY fecha DESC");
-    $proyectos = [];
-    while ($row = $result->fetch_assoc()) {
-      $proyectos[] = $row;
+  /* =========================================================
+   * GET: listar proyectos
+   * ======================================================= */
+  case 'GET':
+    try {
+      $res  = $cn->query("SELECT * FROM proyectos ORDER BY fecha DESC");
+      $rows = [];
+      while ($r = $res->fetch_assoc()) {
+        $rows[] = with_url_ficha($r);
+      }
+      echo json_encode($rows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    } catch (Throwable $e) {
+      http_response_code(500);
+      echo json_encode(['error' => 'Error al listar proyectos']);
     }
-    echo json_encode($proyectos);
     break;
-  }
 
-  // Alta o edición (con adjuntos múltiples)
-  case 'POST': {
-    // ¿Edición?
-    if (isset($_POST['id']) && $_POST['id'] !== '') {
-      $id = intval($_POST['id']);
+  /* =========================================================
+   * POST: alta o edición (si viene id en form-data)
+   *  - multipart/form-data para permitir archivo 'ficha'
+   * Campos: titulo, responsable, descripcion, estado, fecha
+   * Si incluye 'id' => UPDATE; si no => INSERT
+   * ======================================================= */
+  case 'POST':
+    $isUpdate    = isset($_POST['id']) && $_POST['id'] !== '';
+    $titulo      = $_POST['titulo']      ?? '';
+    $responsable = $_POST['responsable'] ?? '';
+    $descripcion = $_POST['descripcion'] ?? '';
+    $estado      = $_POST['estado']      ?? '';
+    $fecha       = $_POST['fecha']       ?? '';
+    $fichaNombreFinal = null;
 
-      // Construcción dinámica del UPDATE (solo campos presentes)
-      $campos = [];
-      $vals = [];
-      $types = '';
-
-      foreach (['titulo','responsable','descripcion','estado','fecha'] as $f) {
-        if (isset($_POST[$f])) {
-          $campos[] = "$f = ?";
-          $vals[] = $_POST[$f];
-          $types .= 's';
-        }
-      }
-
-      if ($campos) {
-        $sql = "UPDATE proyectos SET " . implode(', ', $campos) . " WHERE id = ?";
-        $types .= 'i';
-        $vals[] = $id;
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param($types, ...$vals);
-        if (!$stmt->execute()) {
-          http_response_code(500);
-          echo json_encode(['error' => 'Error al actualizar el proyecto']);
-          exit;
-        }
-        $stmt->close();
-      }
-
-      // Adjuntar archivos nuevos (sin borrar los anteriores)
-      $added = 0;
-      if (!empty($_FILES['fichas']))  $added += save_files($conn, $id, 'fichas');
-      if (!empty($_FILES['edit-fichas'])) $added += save_files($conn, $id, 'edit-fichas');
-
-      echo json_encode(['success' => true, 'adjuntos_agregados' => $added]);
+    if ($titulo === '' || $responsable === '' || $descripcion === '' || $estado === '' || $fecha === '') {
+      http_response_code(400);
+      echo json_encode(['error' => 'Faltan datos del formulario']);
       break;
     }
 
-    // Alta
-    foreach (['titulo','responsable','descripcion','estado','fecha'] as $f) {
-      if (!isset($_POST[$f])) {
-        http_response_code(400);
-        echo json_encode(['error' => "Falta $f"]);
-        exit;
+    // Archivo (opcional)
+    if (isset($_FILES['ficha']) && $_FILES['ficha']['error'] === UPLOAD_ERR_OK) {
+      $original = $_FILES['ficha']['name'];
+      $ext      = pathinfo($original, PATHINFO_EXTENSION);
+      $seguro   = safe_filename(pathinfo($original, PATHINFO_FILENAME));
+      $fichaNombreFinal = $seguro . '_' . uniqid('ficha_') . ($ext ? '.' . $ext : '');
+      $destino  = $uploadProy . '/' . $fichaNombreFinal;
+
+      if (!move_uploaded_file($_FILES['ficha']['tmp_name'], $destino)) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Error al guardar el archivo']);
+        break;
       }
     }
 
-    $stmt = $conn->prepare("INSERT INTO proyectos (titulo, responsable, descripcion, estado, fecha, ficha)
-                            VALUES (?, ?, ?, ?, ?, NULL)");
-    $stmt->bind_param("sssss", $_POST['titulo'], $_POST['responsable'], $_POST['descripcion'], $_POST['estado'], $_POST['fecha']);
-    if (!$stmt->execute()) {
+    if ($isUpdate) {
+      // ===== UPDATE =====
+      $id = (int)($_POST['id']);
+
+      if ($fichaNombreFinal !== null) {
+        // borrar anterior si existía
+        $stmtPrev = $cn->prepare("SELECT ficha FROM proyectos WHERE id = ?");
+        $stmtPrev->bind_param('i', $id);
+        $stmtPrev->execute();
+        $stmtPrev->bind_result($fichaAnterior);
+        $stmtPrev->fetch();
+        $stmtPrev->close();
+
+        if (!empty($fichaAnterior)) {
+          $rutaAnterior = $uploadProy . '/' . $fichaAnterior;
+          if (is_file($rutaAnterior)) { @unlink($rutaAnterior); }
+        }
+
+        $stmt = $cn->prepare("UPDATE proyectos SET titulo=?, responsable=?, descripcion=?, estado=?, fecha=?, ficha=? WHERE id=?");
+        $stmt->bind_param('ssssssi', $titulo, $responsable, $descripcion, $estado, $fecha, $fichaNombreFinal, $id);
+      } else {
+        $stmt = $cn->prepare("UPDATE proyectos SET titulo=?, responsable=?, descripcion=?, estado=?, fecha=? WHERE id=?");
+        $stmt->bind_param('sssssi', $titulo, $responsable, $descripcion, $estado, $fecha, $id);
+      }
+
+      if ($stmt->execute()) {
+        // devolver registro mínimo actualizado (con URL si hay ficha)
+        $row = [
+          'id'          => $id,
+          'titulo'      => $titulo,
+          'responsable' => $responsable,
+          'descripcion' => $descripcion,
+          'estado'      => $estado,
+          'fecha'       => $fecha,
+          'ficha'       => $fichaNombreFinal ?? null,
+        ];
+        echo json_encode(with_url_ficha($row), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+      } else {
+        http_response_code(500);
+        echo json_encode(['error' => 'Error al actualizar el proyecto']);
+      }
+      $stmt->close();
+      break;
+    }
+
+    // ===== INSERT =====
+    $stmt = $cn->prepare("INSERT INTO proyectos (titulo, responsable, descripcion, estado, fecha, ficha) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param('ssssss', $titulo, $responsable, $descripcion, $estado, $fecha, $fichaNombreFinal);
+
+    if ($stmt->execute()) {
+      $out = [
+        'id'          => $stmt->insert_id,
+        'titulo'      => $titulo,
+        'responsable' => $responsable,
+        'descripcion' => $descripcion,
+        'estado'      => $estado,
+        'fecha'       => $fecha,
+        'ficha'       => $fichaNombreFinal,
+      ];
+      echo json_encode(with_url_ficha($out), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    } else {
       http_response_code(500);
       echo json_encode(['error' => 'Error al crear el proyecto']);
-      exit;
     }
-    $newId = $stmt->insert_id;
     $stmt->close();
-
-    $added = 0;
-    if (!empty($_FILES['fichas'])) $added = save_files($conn, $newId, 'fichas');
-
-    echo json_encode(['success' => true, 'id' => $newId, 'adjuntos_agregados' => $added]);
     break;
-  }
 
-  case 'PUT': {
-    parse_str(file_get_contents("php://input"), $put_vars);
-    $stmt = $conn->prepare("UPDATE proyectos SET titulo=?, responsable=?, descripcion=?, estado=?, fecha=? WHERE id=?");
-    $stmt->bind_param("sssssi", $put_vars['titulo'], $put_vars['responsable'], $put_vars['descripcion'], $put_vars['estado'], $put_vars['fecha'], $put_vars['id']);
-    $ok = $stmt->execute();
-    echo json_encode(['success' => $ok]);
-    break;
-  }
+  /* =========================================================
+   * PUT: actualización (sin archivo) vía raw body (x-www-form-urlencoded)
+   * ======================================================= */
+  case 'PUT':
+    parse_str(file_get_contents('php://input'), $put);
+    if (!isset($put['id'], $put['titulo'], $put['responsable'], $put['descripcion'], $put['estado'], $put['fecha'])) {
+      http_response_code(400);
+      echo json_encode(['error' => 'Datos incompletos']);
+      break;
+    }
 
-  case 'DELETE': {
-    if (isset($_GET['id'])) {
-      $id = intval($_GET['id']);
-      // borrar archivos físicos
-      delete_project_files($conn, $id);
-      // borrar proyecto
-      $ok = $conn->query("DELETE FROM proyectos WHERE id = $id");
-      echo json_encode(['success' => $ok ? true : false]);
+    $id = (int)$put['id'];
+    $stmt = $cn->prepare("UPDATE proyectos SET titulo=?, responsable=?, descripcion=?, estado=?, fecha=? WHERE id=?");
+    $stmt->bind_param('sssssi', $put['titulo'], $put['responsable'], $put['descripcion'], $put['estado'], $put['fecha'], $id);
+
+    if ($stmt->execute()) {
+      $row = [
+        'id'          => $id,
+        'titulo'      => $put['titulo'],
+        'responsable' => $put['responsable'],
+        'descripcion' => $put['descripcion'],
+        'estado'      => $put['estado'],
+        'fecha'       => $put['fecha'],
+        'ficha'       => null, // no se toca ficha en PUT
+      ];
+      echo json_encode(with_url_ficha($row), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     } else {
+      http_response_code(500);
+      echo json_encode(['error' => 'Error al actualizar el proyecto']);
+    }
+    $stmt->close();
+    break;
+
+  /* =========================================================
+   * DELETE: elimina proyecto (y su archivo si existe)
+   * ?id=123
+   * ======================================================= */
+  case 'DELETE':
+    if (!isset($_GET['id'])) {
       http_response_code(400);
       echo json_encode(['error' => 'Falta el ID para eliminar']);
+      break;
     }
-    break;
-  }
-}
+    $id = (int)$_GET['id'];
 
-$conn->close();
+    // obtener ficha antes de borrar
+    $stmt = $cn->prepare("SELECT ficha FROM proyectos WHERE id = ?");
+    $stmt->bind_param('i', $id);
+    $stmt->execute();
+    $stmt->bind_result($ficha);
+    $stmt->fetch();
+    $stmt->close();
+
+    // borrar registro
+    $stmtDel = $cn->prepare("DELETE FROM proyectos WHERE id = ?");
+    $stmtDel->bind_param('i', $id);
+
+    if ($stmtDel->execute()) {
+      if (!empty($ficha)) {
+        $ruta = $uploadProy . '/' . $ficha;
+        if (is_file($ruta)) { @unlink($ruta); }
+      }
+      echo json_encode(['mensaje' => 'Proyecto eliminado correctamente']);
+    } else {
+      http_response_code(500);
+      echo json_encode(['error' => 'Error al eliminar el proyecto']);
+    }
+    $stmtDel->close();
+    break;
+
+  default:
+    http_response_code(405);
+    echo json_encode(['error' => 'Método no permitido']);
+}
 
