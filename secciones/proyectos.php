@@ -120,7 +120,7 @@ if (!isset($_SESSION['usuario'])) {
 <body>
   <div class="container py-5">
     <div class="text-center mb-4">
-      <img src="../img/icon-proyectos.png" style="max-width: 80px;">
+      <img src="../icons/icon-proyectos.png" style="max-width: 80px;">
       <h2 class="mt-2">Gestión de Proyectos</h2>
       <p class="text-muted">Alta, edición y eliminación de proyectos</p>
     </div>
@@ -151,7 +151,7 @@ if (!isset($_SESSION['usuario'])) {
             <input type="date" class="form-control" id="fecha" required>
           </div>
           <div class="col-12 col-md-6">
-            <input type="file" class="form-control" id="ficha" name="ficha" accept=".doc,.docx" />
+            <input type="file" class="form-control" id="fichas" name="fichas[]" multiple />
           </div>
           <div class="col-12 col-md-4">
             <button type="submit" class="btn btn-success w-100">Guardar Proyecto</button>
@@ -228,11 +228,11 @@ if (!isset($_SESSION['usuario'])) {
               </div>
             </div>
             <div class="mb-3">
-              <label class="form-label">Ficha actual:</label>
-              <p id="ficha-actual" class="mb-2">No hay ficha cargada actualmente.</p>
+              <label class="form-label">Adjuntos actuales:</label>
+              <p id="ficha-actual" class="mb-2">Usá “Ver archivos” para ver/eliminar.</p>
 
-              <label class="form-label">Cambiar Ficha</label>
-              <input type="file" class="form-control" id="edit-ficha" name="edit-ficha" accept=".doc,.docx" />
+              <label class="form-label">Agregar archivos (opcional)</label>
+              <input type="file" class="form-control" id="edit-fichas" name="edit-fichas[]" multiple />
             </div>
 
 
@@ -245,7 +245,115 @@ if (!isset($_SESSION['usuario'])) {
       </div>
     </div>
 
+    <!-- Modal: Archivos del Proyecto -->
+    <div class="modal fade" id="modalArchivos" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content border-primary">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title">Archivos del proyecto</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <ul id="listaArchivos" class="list-group mb-3"></ul>
+
+            <form id="formAgregarArchivos" class="d-flex gap-2">
+              <input type="hidden" id="archivosProyectoId">
+              <input type="file" class="form-control" id="nuevasFichas" name="fichas[]" multiple>
+              <button class="btn btn-success" type="submit">Subir</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
     <script src="../js/proyectos.js"></script>
+
+    <script>
+      const API = '../api/api-proyectos.php';
+      let modalArchivosInst = null;
+
+      async function abrirArchivos(id) {
+        document.getElementById('archivosProyectoId').value = id;
+        const ul = document.getElementById('listaArchivos');
+        ul.innerHTML = '<li class="list-group-item">Cargando…</li>';
+
+        const res = await fetch(`${API}?archivos=${id}`);
+        const archivos = await res.json();
+
+        ul.innerHTML = '';
+        if (!Array.isArray(archivos) || archivos.length === 0) {
+          ul.innerHTML = '<li class="list-group-item">Sin archivos adjuntos.</li>';
+        } else {
+          archivos.forEach(a => {
+            const li = document.createElement('li');
+            li.className = 'list-group-item d-flex justify-content-between align-items-center';
+            const url = `../uploads/proyectos/${a.proyecto_id}/${a.archivo}`;
+            li.innerHTML = `
+        <div>
+          <strong>${a.nombre_original}</strong>
+          <div class="text-muted small">${(a.size/1024).toFixed(0)} KB · ${a.creado_en}</div>
+        </div>
+        <div class="d-flex gap-2">
+          <a class="btn btn-sm btn-outline-primary" href="${url}" target="_blank">Ver</a>
+          <button class="btn btn-sm btn-outline-danger" onclick="eliminarArchivo(${a.id}, ${a.proyecto_id})">Eliminar</button>
+        </div>`;
+            ul.appendChild(li);
+          });
+        }
+
+        // 👉 Reusar instancia y no apilar backdrops
+        const modalEl = document.getElementById('modalArchivos');
+        modalArchivosInst = bootstrap.Modal.getOrCreateInstance(modalEl);
+        if (!modalEl.classList.contains('show')) {
+          modalArchivosInst.show();
+        }
+      }
+
+      async function eliminarArchivo(fileId, proyectoId) {
+        if (!confirm('¿Eliminar este archivo?')) return;
+        const res = await fetch(`${API}?file_id=${fileId}`, {
+          method: 'DELETE'
+        });
+        const out = await res.json();
+        if (out.success) abrirArchivos(proyectoId);
+        else alert('No se pudo eliminar.');
+      }
+
+      document.getElementById('formAgregarArchivos')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const proyectoId = document.getElementById('archivosProyectoId').value;
+        const files = document.getElementById('nuevasFichas').files;
+        if (!files.length) return;
+
+        const fd = new FormData();
+        fd.append('id', proyectoId); // edición: agrega adjuntos
+        for (const f of files) fd.append('fichas[]', f);
+
+        const res = await fetch(API, {
+          method: 'POST',
+          body: fd
+        });
+        const out = await res.json();
+        if (out.success) {
+          e.target.reset();
+          // 👇 refrescamos la lista sin volver a hacer .show() (no apila backdrops)
+          abrirArchivos(proyectoId);
+        } else {
+          alert(out.error || 'Error al subir archivos');
+        }
+      });
+
+      // Fallback: limpiar cualquier backdrop “colgado” al cerrar el modal
+      document.getElementById('modalArchivos').addEventListener('hidden.bs.modal', () => {
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('padding-right');
+      });
+    </script>
+
+
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 
