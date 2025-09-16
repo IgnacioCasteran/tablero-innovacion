@@ -5,21 +5,18 @@ if (!isset($_SESSION['usuario'])) {
     exit();
 }
 
-require_once __DIR__ . '/../conexion.php';
+$host = 'localhost';
+$db = 'informes_pj';
+$user = 'root';
+$pass = '';
 
-try {
-    $cn = db(); // conexión única (lee .env)
-} catch (Throwable $e) {
-    http_response_code(500);
-    echo "Error de conexión a la base de datos.";
-    exit;
-}
+$conn = new mysqli($host, $user, $pass, $db);
+$conn->set_charset("utf8");
 
 $proyectos = [];
 $reuniones = [];
 
-// Traer datos (solo lectura, no hace falta prepared)
-$result = $cn->query("SELECT * FROM reuniones_actividades ORDER BY fecha_inicio DESC");
+$result = $conn->query("SELECT * FROM reuniones_actividades ORDER BY fecha_inicio DESC");
 while ($row = $result->fetch_assoc()) {
     if ($row['tipo'] === 'proyecto') {
         $proyectos[] = $row;
@@ -47,7 +44,7 @@ function obtenerClaseEstado($estado)
     };
 }
 
-$cn->close();
+$conn->close();
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -249,7 +246,7 @@ $cn->close();
         </div>
 
         <!-- Proyectos y Actividades -->
-        <h2 class="card-title section-title">Proyectos y Actividades</h2>
+        <h2 class="card-title section-title">ACTIVIDADES</h2>
 
         <!-- Tabla (desktop y tablet) -->
         <div class="table-responsive d-none d-md-block">
@@ -311,8 +308,7 @@ $cn->close();
 
 
         <!-- Reuniones -->
-        <h2 class="card-title section-title">Reuniones</h2>
-
+        <h2 class="card-title section-title">REUNIONES </h2>
         <!-- Tabla (desktop y tablet) -->
         <div class="table-responsive d-none d-md-block">
             <table class="table table-bordered align-middle">
@@ -395,8 +391,8 @@ $cn->close();
                         <div class="mb-3">
                             <label>Tipo</label>
                             <select class="form-select" name="tipo" id="edit-tipo" required>
-                                <option value="proyecto">Proyecto / Actividad</option>
-                                <option value="reunion">Reunión</option>
+                                <option value="proyecto">ACTIVIDADES</option>
+                                <option value="reunion">REUNIONES</option>
                             </select>
                         </div>
                         <div class="mb-3">
