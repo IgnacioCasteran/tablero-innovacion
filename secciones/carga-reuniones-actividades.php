@@ -52,7 +52,7 @@ if (!isset($_SESSION['usuario'])) {
         <label class="form-label">Tipo</label>
         <select class="form-select" name="tipo" id="tipo" required onchange="mostrarCampos()">
           <option value="">Seleccionar</option>
-          <option value="proyecto">Proyecto / Actividad</option>
+          <option value="proyecto">Actividad</option>
           <option value="reunion">Reunión</option>
         </select>
       </div>

@@ -249,7 +249,7 @@ $cn->close();
         </div>
 
         <!-- Proyectos y Actividades -->
-        <h2 class="card-title section-title">Proyectos y Actividades</h2>
+        <h2 class="card-title section-title">Actividades</h2>
 
         <!-- Tabla (desktop y tablet) -->
         <div class="table-responsive d-none d-md-block">
