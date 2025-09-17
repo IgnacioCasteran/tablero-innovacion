@@ -1,11 +1,10 @@
 // js/proyectos.js
 
 document.addEventListener("DOMContentLoaded", () => {
-  const tablaBody = document.querySelector("#tablaProyectos tbody");
-  const cardsWrap = document.getElementById("cardsProyectos"); // existe solo si agregaste las cards en el HTML
-  const form = document.getElementById("formProyecto");
+  const tablaBody  = document.querySelector("#tablaProyectos tbody");
+  const cardsWrap  = document.getElementById("cardsProyectos");
+  const form       = document.getElementById("formProyecto");
   const formEditar = document.getElementById("formEditar");
-  const DL = "/descargas/proyecto.php?f=";
 
   obtenerProyectos();
 
@@ -15,8 +14,9 @@ document.addEventListener("DOMContentLoaded", () => {
       .then(data => {
         renderTabla(data);
         renderCards(data);
-        attachActions(); // vincula eventos editar/eliminar en ambos renders
-      });
+        attachActions();
+      })
+      .catch(err => console.error("Error al listar proyectos:", err));
   }
 
   /* ------------ Render Tabla (desktop/tablet) ------------ */
@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <td>${escapeHtml(p.fecha || "")}</td>
         <td>${escapeHtml(p.descripcion || "")}</td>
         <td class="text-nowrap">
-          ${p.ficha ? `<a href="${DL}${encodeURIComponent(p.ficha)}" target="_blank" class="btn btn-sm btn-primary mb-1">📄 Ver ficha</a> ` : ""}
+          <button class="btn btn-primary btn-sm me-2 btn-archivos" data-id="${p.id}">📄 Ver archivos</button>
           <button class="btn btn-warning btn-sm me-2 btn-editar"
             data-id="${p.id}"
             data-titulo="${attr(p.titulo)}"
@@ -41,7 +41,6 @@ document.addEventListener("DOMContentLoaded", () => {
             data-descripcion="${attr(p.descripcion)}"
             data-estado="${attr(p.estado)}"
             data-fecha="${attr(p.fecha)}"
-            data-ficha="${attr(p.ficha || "")}"
           >✏️</button>
           <button class="btn btn-danger btn-sm btn-eliminar" data-id="${p.id}">🗑️</button>
         </td>
@@ -56,12 +55,11 @@ document.addEventListener("DOMContentLoaded", () => {
     cardsWrap.innerHTML = "";
 
     lista.forEach(p => {
-      const titulo = escapeHtml(p.titulo || "");
-      const responsable = escapeHtml(p.responsable || "");
-      const estado = (p.estado || "Pendiente").trim();
-      const fecha = escapeHtml(p.fecha || "");
-      const descripcion = escapeHtml(p.descripcion || "");
-      const ficha = p.ficha ? encodeURIComponent(p.ficha) : "";
+      const titulo       = escapeHtml(p.titulo || "");
+      const responsable  = escapeHtml(p.responsable || "");
+      const estado       = (p.estado || "Pendiente").trim();
+      const fecha        = escapeHtml(p.fecha || "");
+      const descripcion  = escapeHtml(p.descripcion || "");
 
       const card = document.createElement("div");
       card.className = "pj-card";
@@ -74,9 +72,9 @@ document.addEventListener("DOMContentLoaded", () => {
           <div><strong>Resp.:</strong> ${responsable || "—"}</div>
           <div><strong>Fecha:</strong> ${fecha || "—"}</div>
           ${descripcion ? `<div class="full pj-meta"><strong>Desc.:</strong> ${descripcion}</div>` : ""}
-          ${ficha ? `<div class="full"><a href="${DL}${ficha}" target="_blank" class="btn btn-sm btn-primary">Ver ficha</a></div>` : ""}
         </div>
         <div class="pj-actions">
+          <button class="btn btn-sm btn-primary btn-archivos" data-id="${p.id}">📄 Ver archivos</button>
           <button class="btn btn-sm btn-warning btn-editar"
             data-id="${p.id}"
             data-titulo="${attr(p.titulo)}"
@@ -84,7 +82,6 @@ document.addEventListener("DOMContentLoaded", () => {
             data-descripcion="${attr(p.descripcion)}"
             data-estado="${attr(p.estado)}"
             data-fecha="${attr(p.fecha)}"
-            data-ficha="${attr(p.ficha || "")}"
           >✏️ Editar</button>
           <button class="btn btn-sm btn-danger btn-eliminar" data-id="${p.id}">🗑️ Eliminar</button>
         </div>
@@ -93,8 +90,21 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  /* ------------ Actions (editar / eliminar) ------------ */
+  /* ------------ Actions (archivos / editar / eliminar) ------------ */
   function attachActions() {
+    // Ver archivos (usa la función global del modal definida en proyectos.php)
+    document.querySelectorAll(".btn-archivos").forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.dataset.id;
+        if (typeof window.abrirArchivos === "function") {
+          window.abrirArchivos(id);
+        } else {
+          alert("La función 'abrirArchivos' no está definida. Verificá el modal en proyectos.php");
+        }
+      };
+    });
+
+    // Editar
     document.querySelectorAll(".btn-editar").forEach(btn => {
       btn.onclick = () => {
         const p = {
@@ -103,18 +113,15 @@ document.addEventListener("DOMContentLoaded", () => {
           responsable: btn.dataset.responsable || "",
           descripcion: btn.dataset.descripcion || "",
           estado: btn.dataset.estado || "",
-          fecha: btn.dataset.fecha || "",
-          ficha: btn.dataset.ficha || ""
+          fecha: btn.dataset.fecha || ""
         };
         abrirModalEdicion(p);
       };
     });
 
+    // Eliminar
     document.querySelectorAll(".btn-eliminar").forEach(btn => {
-      btn.onclick = () => {
-        const id = btn.dataset.id;
-        eliminar(id);
-      };
+      btn.onclick = () => eliminar(btn.dataset.id);
     });
   }
 
@@ -126,39 +133,38 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("edit-estado").value = p.estado;
     document.getElementById("edit-fecha").value = p.fecha;
 
+    // Texto fijo (los adjuntos se ven/gestionan en “Ver archivos”)
     const fichaActual = document.getElementById("ficha-actual");
-    if (p.ficha && p.ficha !== "null") {
-      const safe = escapeHtml(p.ficha);
-      fichaActual.innerHTML = `<a href="${DL}${encodeURIComponent(p.ficha)}" target="_blank">${safe}</a>`;
-    } else {
-      fichaActual.textContent = "No hay ficha cargada actualmente.";
+    if (fichaActual) {
+      fichaActual.textContent = "Usá “Ver archivos” para ver/eliminar.";
     }
 
-    const modal = new bootstrap.Modal(document.getElementById("modalEditar"));
-    modal.show();
+    new bootstrap.Modal(document.getElementById("modalEditar")).show();
   }
 
-  /* ------------ Crear ------------ */
+  /* ------------ Crear (alta) ------------ */
   if (form) {
     form.addEventListener("submit", e => {
       e.preventDefault();
-      const formData = new FormData();
-      formData.append("titulo", form.titulo.value);
-      formData.append("responsable", form.responsable.value);
-      formData.append("descripcion", form.descripcion.value);
-      formData.append("estado", form.estado.value);
-      formData.append("fecha", form.fecha.value);
 
-      if (form.ficha.files.length > 0) {
-        formData.append("ficha", form.ficha.files[0]);
-      }
+      const fd = new FormData();
+      fd.append("titulo", form.titulo.value);
+      fd.append("responsable", form.responsable.value);
+      fd.append("descripcion", form.descripcion.value);
+      fd.append("estado", form.estado.value);
+      fd.append("fecha", form.fecha.value);
 
-      fetch("../api/api-proyectos.php", { method: "POST", body: formData })
+      // múltiples archivos (input id="fichas" name="fichas[]")
+      const filesAlta = form.querySelector("#fichas")?.files || [];
+      for (const f of filesAlta) fd.append("fichas[]", f);
+
+      fetch("../api/api-proyectos.php", { method: "POST", body: fd })
         .then(res => res.json())
         .then(() => {
           form.reset();
           obtenerProyectos();
-        });
+        })
+        .catch(err => console.error("Error al crear proyecto:", err));
     });
   }
 
@@ -167,26 +173,29 @@ document.addEventListener("DOMContentLoaded", () => {
     formEditar.addEventListener("submit", e => {
       e.preventDefault();
 
-      const formData = new FormData();
-      formData.append("id", document.getElementById("edit-id").value);
-      formData.append("titulo", document.getElementById("edit-titulo").value);
-      formData.append("responsable", document.getElementById("edit-responsable").value);
-      formData.append("descripcion", document.getElementById("edit-descripcion").value);
-      formData.append("estado", document.getElementById("edit-estado").value);
-      formData.append("fecha", document.getElementById("edit-fecha").value);
+      const fd = new FormData();
+      fd.append("id", document.getElementById("edit-id").value);
+      fd.append("titulo", document.getElementById("edit-titulo").value);
+      fd.append("responsable", document.getElementById("edit-responsable").value);
+      fd.append("descripcion", document.getElementById("edit-descripcion").value);
+      fd.append("estado", document.getElementById("edit-estado").value);
+      fd.append("fecha", document.getElementById("edit-fecha").value);
 
-      const archivoFicha = document.getElementById("edit-ficha").files[0];
-      if (archivoFicha) {
-        formData.append("ficha", archivoFicha);
-      }
+      // múltiples archivos adicionales en edición (input id="edit-fichas" name="edit-fichas[]")
+      const filesEdit = document.getElementById("edit-fichas")?.files || [];
+      for (const f of filesEdit) fd.append("edit-fichas[]", f);
 
-      fetch("../api/api-proyectos.php", { method: "POST", body: formData })
+      fetch("../api/api-proyectos.php", { method: "POST", body: fd })
         .then(res => res.json())
         .then(() => {
           const modal = bootstrap.Modal.getInstance(document.getElementById("modalEditar"));
           modal.hide();
+          // limpiamos el input de archivos del modal
+          const inputEdit = document.getElementById("edit-fichas");
+          if (inputEdit) inputEdit.value = "";
           obtenerProyectos();
-        });
+        })
+        .catch(err => console.error("Error al editar proyecto:", err));
     });
   }
 
@@ -194,7 +203,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function eliminar(id) {
     if (!confirm("¿Estás seguro de eliminar este proyecto?")) return;
 
-    fetch(`../api/api-proyectos.php?id=${id}`, { method: "DELETE" })
+    fetch(`../api/api-proyectos.php?id=${encodeURIComponent(id)}`, { method: "DELETE" })
       .then(res => res.json())
       .then(() => obtenerProyectos())
       .catch(err => console.error("Error al eliminar:", err));
@@ -214,14 +223,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Normaliza nombre de estado a clase css (para badges de cards)
   function cssState(estado) {
-    // Mapeo por texto visible (coincide con los de tu select)
-    const map = {
-      "En curso": "En\\ curso",
-      "Finalizado": "Finalizado",
-      "Pendiente": "Pendiente"
-    };
+    const map = { "En curso": "En\\ curso", "Finalizado": "Finalizado", "Pendiente": "Pendiente" };
     return (map[estado] || estado).replace(/\s/g, "\\ ");
   }
 });
-
 
