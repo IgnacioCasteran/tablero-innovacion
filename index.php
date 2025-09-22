@@ -31,7 +31,7 @@ if (!isset($_SESSION['usuario'])) {
         <div class="d-flex flex-column align-items-center mb-4">
             <a href="/index.php" class="text-decoration-none text-dark text-center">
                 <img src="/img/poder-judicial.png" class="logo mb-2" alt="Poder Judicial de La Pampa">
-                <h1 class="titulo mb-0">PODER JUDICIAL</h1>
+                <h1 class="titulo mb-0">PODER JUDICIAL </h1>
                 <h4 class="subtitulo text-muted">de La Pampa</h4>
 
                 <div class="row g-4 justify-content-center">
