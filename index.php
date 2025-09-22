@@ -43,18 +43,19 @@ if (!isset($_SESSION['usuario'])) {
 
 <body>
 
-    <!-- Botón cerrar sesión arriba a la derecha -->
-    <div class="container mt-3 d-flex justify-content-end">
-        <a href="/login/logout.php" class="btn btn-danger btn-sm">
-            <i class="bi bi-box-arrow-right"></i>
-            Cerrar sesión (<?php echo $_SESSION['usuario']; ?>)
-        </a>
+    <!-- ===== Recordatorios (próximos 7 días) ===== -->
+    <div id="recordatorios" class="card shadow d-none"
+        style="position:fixed;top:16px;left:16px;max-width:360px;z-index:1050;border-left:6px solid #7c1c2c;">
+        <button type="button" class="btn-close position-absolute top-0 end-0 m-2" id="rec-close" aria-label="Cerrar"></button>
+        <div class="card-header" style="background:#f9e7e3;color:#7c1c2c;font-weight:600;">
+            <i class="bi bi-bell-fill me-1"></i> Recordatorios (próx. 7 días)
+        </div>
+        <div id="rec-list" class="list-group list-group-flush"></div>
+        <div class="card-footer py-2 text-end">
+            <a href="secciones/agenda.php" class="btn btn-sm btn-outline-primary">Abrir agenda</a>
+        </div>
     </div>
-    <div id="rec-list" class="list-group list-group-flush"></div>
-    <div class="card-footer py-2 text-end">
-        <a href="secciones/agenda.php" class="btn btn-sm btn-outline-primary">Abrir agenda</a>
-    </div>
-    </div>
+
 
     <!-- Botón minimizado -->
     <button id="rec-min" class="btn btn-sm btn-warning d-none"
@@ -62,14 +63,14 @@ if (!isset($_SESSION['usuario'])) {
         🔔 Recordatorios
     </button>
 
-    <div id="recordatorios" class="card shadow d-none"
-        style="position:fixed;top:16px;left:16px;max-width:360px;z-index:1050;border-left:6px solid #7c1c2c;">
-        <button type="button" class="btn-close position-absolute top-0 end-0 m-2" id="rec-close" aria-label="Cerrar"></button>
-        <div class="card-header" style="background:#f9e7e3;color:#7c1c2c;font-weight:600;">
-            <i class="bi bi-bell-fill me-1"></i> Recordatorios (próx. 7 días)
-        </div>
+    <!-- Botón cerrar sesión arriba a la derecha -->
+    <div class="container mt-3 d-flex justify-content-end">
+        <a href="/login/logout.php" class="btn btn-danger btn-sm">
+            <i class="bi bi-box-arrow-right"></i>
+            Cerrar sesión (<?php echo $_SESSION['usuario']; ?>)
+        </a>
     </div>
-    
+
     <div class="container py-5 text-center">
         <div class="d-flex flex-column align-items-center mb-4">
             <a href="/index.php" class="text-decoration-none text-dark text-center">
