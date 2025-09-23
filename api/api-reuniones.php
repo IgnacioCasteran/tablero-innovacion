@@ -63,6 +63,29 @@ if ($method === 'POST' && isset($_POST['accion']) && $_POST['accion'] === 'pin')
     exit;
 }
 
+/* =========================================================
+ * POST accion=finalizar : marcar finalizado / reabrir
+ * Body: id, finalizado(0|1)
+ * ======================================================= */
+if ($method === 'POST' && isset($_POST['accion']) && $_POST['accion'] === 'finalizar') {
+    $id = (int)($_POST['id'] ?? 0);
+    $finalizado = (int)($_POST['finalizado'] ?? 0);
+    if ($id <= 0) {
+        http_response_code(400);
+        echo json_encode(['error' => 'ID inválido']);
+        exit;
+    }
+    $stmt = $cn->prepare("UPDATE reuniones_actividades SET finalizado=? WHERE id=?");
+    $stmt->bind_param('ii', $finalizado, $id);
+    if ($stmt->execute()) {
+        echo json_encode(['success' => true, 'mensaje' => $finalizado ? 'Marcado como finalizado' : 'Reabierto']);
+    } else {
+        http_response_code(500);
+        echo json_encode(['error' => 'No se pudo actualizar finalizado']);
+    }
+    exit;
+}
+
 
 /* =========================================================
  * POST: alta o edición (si viene id)
