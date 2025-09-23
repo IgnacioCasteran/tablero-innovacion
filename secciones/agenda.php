@@ -42,56 +42,45 @@ if (!isset($_SESSION['usuario'])) {
 
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #fef1e9;
+            background: #fef1e9;
             margin: 0;
             padding: 0;
             display: flex;
         }
 
-        /* Wrapper para ocupar toda la altura de la pantalla */
         .agenda-wrap {
             display: flex;
             flex-direction: column;
             min-height: 100svh;
-            /* seguro en móviles */
             width: 100%;
         }
 
-        /* Botón volver */
         .btn-volver {
             padding: 12px 16px;
             display: flex;
             justify-content: center;
         }
 
-        /* El contenedor del calendario se estira */
         #calendar {
             flex: 1;
-            /* ocupa todo el alto restante */
             width: 100%;
             max-width: none;
             margin: 0;
-            /* anula margen del css externo */
             padding: 0;
-            /* anula padding del css externo */
             background: transparent;
-            /* sin caja blanca en móvil */
             border-radius: 0;
             box-shadow: none;
         }
 
-        /* Estilos internos de FullCalendar */
         #calendar .fc {
             height: 100%;
-            /* clave: ocupar alto total */
             width: 100%;
             max-width: none;
             background: transparent;
             box-shadow: none;
         }
 
-        /* Desktop/tablet: podés volver a la “caja” elegante */
-        @media (min-width: 768px) {
+        @media (min-width:768px) {
             .btn-volver {
                 justify-content: flex-start;
                 max-width: 1100px;
@@ -112,30 +101,9 @@ if (!isset($_SESSION['usuario'])) {
             }
         }
 
-        /* Título más chico en móvil */
-        #calendar .fc-toolbar-title {
-            color: #742a2a;
-            font-size: 1.3rem;
-        }
-
-        @media (min-width: 768px) {
-            #calendar .fc-toolbar-title {
-                font-size: 1.8rem;
-            }
-        }
-
-        /* Fondo principal del calendario */
-        #calendar .fc {
-            background: #fff;
-            border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            padding: 10px;
-        }
-
-        /* Encabezado del mes y botones de navegación */
+        /* Toolbar */
         #calendar .fc-toolbar {
-            background-color: #742a2a;
-            /* color institucional */
+            background: #742a2a;
             color: #fff;
             padding: 8px 12px;
             border-radius: 8px 8px 0 0;
@@ -143,41 +111,45 @@ if (!isset($_SESSION['usuario'])) {
 
         #calendar .fc-toolbar-title {
             color: #fff;
-            font-weight: bold;
+            font-weight: 700;
+            font-size: 1.3rem;
+        }
+
+        @media (min-width:768px) {
+            #calendar .fc-toolbar-title {
+                font-size: 1.8rem;
+            }
         }
 
         #calendar .fc-button {
-            background-color: #a0323e;
+            background: #a0323e;
             border: none;
         }
 
         #calendar .fc-button:hover {
-            background-color: #8b2934;
+            background: #8b2934;
         }
 
-        /* Encabezados de los días (dom, lun, mar...) */
+        /* Head de días */
         #calendar .fc-col-header-cell {
-            background-color: #f7f1ee;
-            font-weight: bold;
+            background: #f7f1ee;
+            font-weight: 700;
             color: #5a3d3d;
             border: none;
         }
 
-        /* Celdas normales */
+        /* Celdas */
         #calendar .fc-daygrid-day {
-            background-color: #fff;
+            background: #fff;
         }
 
-        /* Día actual */
         #calendar .fc-day-today {
-            background-color: #ffefd5 !important;
-            /* amarillo pastel */
+            background: #ffefd5 !important;
             border: 2px solid #e77d11 !important;
             box-shadow: inset 0 0 8px #e77d11;
         }
 
-        /* Ajustes para móvil */
-        @media (max-width: 576px) {
+        @media (max-width:576px) {
             #calendar .fc {
                 padding: 5px;
                 border-radius: 8px;
@@ -188,17 +160,104 @@ if (!isset($_SESSION['usuario'])) {
             }
         }
 
-        /* Centrar el título del mes/año */
+        /* Centrar título si la toolbar salta a dos líneas */
         #calendar .fc-toolbar.fc-header-toolbar {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            /* centra el contenido */
         }
 
         #calendar .fc-toolbar-title {
             flex: 1 1 100%;
             text-align: center;
+        }
+
+        /* ===== Paleta base por variables (todas las vistas) ===== */
+        #calendar .fc {
+            --fc-event-bg-color: #7c1c2c;
+            --fc-event-border-color: #7c1c2c;
+            --fc-event-text-color: #ffffff;
+        }
+
+        /* Eventos genéricos (month/list) */
+        #calendar .fc .fc-event,
+        #calendar .fc .fc-daygrid-event {
+            background: #7c1c2c !important;
+            color: #fff !important;
+            border: none !important;
+            border-radius: 6px;
+            padding: 2px 6px;
+            font-weight: 600;
+        }
+
+        #calendar .fc .fc-event:hover {
+            filter: brightness(.9);
+        }
+
+        /* Vista week/day (timegrid/vertical) */
+        #calendar .fc .fc-timegrid-event,
+        #calendar .fc .fc-v-event {
+            background: #7c1c2c !important;
+            border-color: #7c1c2c !important;
+            color: #fff !important;
+            border: none !important;
+            border-radius: 6px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, .1);
+        }
+
+        #calendar .fc .fc-timegrid-event .fc-event-time,
+        #calendar .fc .fc-timegrid-event .fc-event-title,
+        #calendar .fc .fc-timegrid-event .fc-event-main,
+        #calendar .fc .fc-v-event .fc-event-time,
+        #calendar .fc .fc-v-event .fc-event-title,
+        #calendar .fc .fc-v-event .fc-event-main {
+            color: #fff !important;
+        }
+
+        /* Vista de lista: links legibles */
+        #calendar .fc .fc-list-event-title a {
+            color: #7c1c2c !important;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        /* =========================================================
+     FIX **CLAVE**: Eventos con HORA en vista MONTH (dot-event)
+     ========================================================= */
+
+        /* 1) Chip completo en bordó (no azul) */
+        #calendar .fc .fc-daygrid-event.fc-daygrid-dot-event {
+            background: #7c1c2c !important;
+            border-color: #7c1c2c !important;
+            color: #fff !important;
+            border-radius: 6px;
+            /* que se vea como pastilla */
+            padding: 2px 6px;
+            /* mismo padding que los demás */
+        }
+
+        /* 2) Texto interno forzado a BLANCO (hora y título) */
+        #calendar .fc .fc-daygrid-event.fc-daygrid-dot-event .fc-event-main,
+        #calendar .fc .fc-daygrid-event.fc-daygrid-dot-event .fc-event-main-frame,
+        #calendar .fc .fc-daygrid-event.fc-daygrid-dot-event .fc-event-time,
+        #calendar .fc .fc-daygrid-event.fc-daygrid-dot-event .fc-event-title,
+        #calendar .fc .fc-daygrid-event.fc-daygrid-dot-event .fc-event-title a {
+            color: #fff !important;
+            -webkit-text-fill-color: #fff !important;
+            /* por si hay estilos del navegador */
+        }
+
+        /* 3) Evitar que el link “vuelva” azul en estados */
+        #calendar .fc .fc-daygrid-event.fc-daygrid-dot-event:hover,
+        #calendar .fc .fc-daygrid-event.fc-daygrid-dot-event:visited,
+        #calendar .fc .fc-daygrid-event.fc-daygrid-dot-event:active {
+            color: #fff !important;
+        }
+
+        /* 4) Puntito a la izquierda en blanco para contraste */
+        #calendar .fc .fc-daygrid-event-dot {
+            background: #fff !important;
+            border-color: #fff !important;
         }
     </style>
 

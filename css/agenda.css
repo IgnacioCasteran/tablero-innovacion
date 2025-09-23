@@ -1,108 +1,144 @@
-body {
-    margin: 0;
-    font-family: 'Segoe UI', sans-serif;
-    background-color: #fef6f0;
+/* ====== Base ====== */
+body{
+  margin:0;
+  font-family:'Segoe UI',sans-serif;
+  background-color:#fef6f0;
 }
 
-#calendar {
-    max-width: 1050px;
-    margin: 40px auto;
-    padding: 25px;
-    background-color: white;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    border-radius: 12px;
+#calendar{
+  max-width:1050px;
+  margin:40px auto;
+  padding:25px;
+  background-color:#fff;
+  box-shadow:0 0 10px rgba(0,0,0,.1);
+  border-radius:12px;
 }
 
-.fc .fc-toolbar-title {
-    font-size: 2rem;
-    color: #722F37;
-    font-weight: bold;
+/* ====== Toolbar / Botones ====== */
+.fc .fc-toolbar-title{
+  font-size:2rem;
+  color:#722F37;
+  font-weight:bold;
 }
 
-.fc .fc-button-primary {
-    background-color: #a0323e;
-    border: none;
-    border-radius: 6px;
-    padding: 0.4em 1em;
-    font-weight: bold;
+.fc .fc-button-primary{
+  background-color:#a0323e;
+  border:none;
+  border-radius:6px;
+  padding:.4em 1em;
+  font-weight:bold;
+}
+.fc .fc-button-primary:hover{ background-color:#8b2934; }
+
+.fc .fc-button{ background-color:#6c4c41; border:none; }
+.fc .fc-button:hover{ background-color:#8e6258; }
+.fc .fc-button-primary:not(:disabled).fc-button-active{ background-color:#a66f60; }
+
+/* ====== Encabezados / Día actual / Hover ====== */
+.fc .fc-daygrid-day-number{ font-weight:bold; color:#4e4e4e; }
+
+.fc-col-header-cell-cushion{
+  color:#5e5e5e;
+  font-weight:600;
 }
 
-.fc .fc-button-primary:hover {
-    background-color: #8b2934;
+/* Día actual */
+.fc-day-today{
+  background-color:#ffefd5 !important;
+  border:2px solid #e77d11 !important;
+  box-shadow:inset 0 0 8px #e77d11;
+  font-weight:bold;
+  color:#a0323e;
 }
 
-.fc .fc-daygrid-day-number {
-    font-weight: bold;
-    color: #4e4e4e;
+/* Hover sobre la celda del mes */
+.fc-daygrid-day:hover{
+  background-color:#f0f8ff;
+  cursor:pointer;
+  transition:background-color .2s ease;
 }
 
-.swal2-title {
-    font-size: 1.4rem;
-    color: #722F37;
+/* ====== Paleta de eventos (todas las vistas) ====== */
+/* Variables oficiales de FullCalendar para fondo/borde/texto */
+#calendar .fc{
+  --fc-event-bg-color:#7c1c2c;
+  --fc-event-border-color:#7c1c2c;
+  --fc-event-text-color:#ffffff;
 }
 
-.swal2-input, .swal2-textarea {
-    border-radius: 6px;
-    border: 1px solid #ccc;
+/* Eventos genéricos (mes/lista) */
+#calendar .fc .fc-event,
+#calendar .fc .fc-daygrid-event{
+  background:#7c1c2c !important;
+  color:#fff !important;
+  border:none !important;
+  border-radius:6px;
+  font-size:.9em;
+  padding:2px 6px;
+  font-weight:600;
+}
+#calendar .fc .fc-event:hover{ filter:brightness(.92); cursor:pointer; }
+
+/* Vista week/day (timegrid) */
+#calendar .fc .fc-timegrid-event,
+#calendar .fc .fc-v-event{
+  background:#7c1c2c !important;
+  border-color:#7c1c2c !important;
+  color:#fff !important;
+  border:none !important;
+  border-radius:6px;
+  box-shadow:0 1px 2px rgba(0,0,0,.1);
+}
+#calendar .fc .fc-timegrid-event .fc-event-main,
+#calendar .fc .fc-timegrid-event .fc-event-time,
+#calendar .fc .fc-timegrid-event .fc-event-title,
+#calendar .fc .fc-v-event .fc-event-main,
+#calendar .fc .fc-v-event .fc-event-time,
+#calendar .fc .fc-v-event .fc-event-title{
+  color:#fff !important;
 }
 
-.swal2-confirm {
-    background-color: #a0323e !important;
+/* ====== FIX CLAVE: eventos CON HORA en vista MONTH (dot-event) ====== */
+/* Chip completo (el <a>) en bordó y con texto blanco */
+#calendar .fc .fc-daygrid-event.fc-daygrid-dot-event{
+  background:#7c1c2c !important;
+  border-color:#7c1c2c !important;
+  color:#fff !important;
+  border-radius:6px;
+  padding:2px 6px;
 }
 
-/* 🔘 Cuando pasás por un día */
-.fc-daygrid-day:hover {
-    background-color: #f0f8ff;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
+/* Forzar blanco en HORA y TÍTULO dentro del dot-event */
+#calendar .fc .fc-daygrid-event.fc-daygrid-dot-event .fc-event-main,
+#calendar .fc .fc-daygrid-event.fc-daygrid-dot-event .fc-event-main-frame,
+#calendar .fc .fc-daygrid-event.fc-daygrid-dot-event .fc-event-time,
+#calendar .fc .fc-daygrid-event.fc-daygrid-dot-event .fc-event-title,
+#calendar .fc .fc-daygrid-event.fc-daygrid-dot-event .fc-event-title a{
+  color:#fff !important;
+  -webkit-text-fill-color:#fff !important;
 }
 
-/* 📅 Cambiar el color del día actual */
-.fc-day-today {
-    background-color: #ffefd5 !important;  /* más amarillo pastel */
-    border: 2px solid #e77d11 !important;  /* naranja fuerte */
-    box-shadow: inset 0 0 8px #e77d11;     /* efecto de brillo */
-    font-weight: bold;
-    color: #a0323e;
+/* Evitar que el link vuelva azul en estados */
+#calendar .fc .fc-daygrid-event.fc-daygrid-dot-event:hover,
+#calendar .fc .fc-daygrid-event.fc-daygrid-dot-event:visited,
+#calendar .fc .fc-daygrid-event.fc-daygrid-dot-event:active{
+  color:#fff !important;
 }
 
-/* 🟦 Evento visual más suave */
-.fc-event {
-    background-color: #007bff;
-    border: none;
-    border-radius: 6px;
-    font-size: 0.9em;
-    padding: 2px 4px;
+/* Puntito a la izquierda en BLANCO para más contraste */
+#calendar .fc .fc-daygrid-event-dot{
+  background:#fff !important;
+  border-color:#fff !important;
 }
 
-.fc-event:hover {
-    background-color: #0056b3;
-    cursor: pointer;
+/* ====== Lista ====== */
+#calendar .fc .fc-list-event-title a{
+  color:#7c1c2c !important;
+  font-weight:600;
+  text-decoration:none;
 }
 
-/* 🧭 Encabezado del mes */
-.fc-toolbar-title {
-    font-size: 1.8em;
-    color: #6c4c41;
-    font-weight: bold;
-}
-
-/* 📅 Encabezados de los días */
-.fc-col-header-cell-cushion {
-    color: #5e5e5e;
-    font-weight: 600;
-}
-
-/* ⚙️ Botones de navegación */
-.fc .fc-button {
-    background-color: #6c4c41;
-    border: none;
-}
-
-.fc .fc-button:hover {
-    background-color: #8e6258;
-}
-
-.fc .fc-button-primary:not(:disabled).fc-button-active {
-    background-color: #a66f60;
-}
+/* ====== SweetAlert ====== */
+.swal2-title{ font-size:1.4rem; color:#722F37; }
+.swal2-input, .swal2-textarea{ border-radius:6px; border:1px solid #ccc; }
+.swal2-confirm{ background-color:#a0323e !important; }
