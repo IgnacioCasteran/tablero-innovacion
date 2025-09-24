@@ -4,31 +4,42 @@ require_once __DIR__ . '/../conexion.php';
 
 try {
   $cn = db();
-  $sql = "SELECT id, titulo, fecha, hora_inicio, hora_fin, descripcion
-          FROM eventos
-          ORDER BY fecha DESC, COALESCE(hora_inicio,'00:00:00')";
+  $sql = "SELECT id, titulo, fecha, hora_inicio, hora_fin, descripcion, COALESCE(categoria,'general') AS categoria
+            FROM eventos
+        ORDER BY fecha DESC, COALESCE(hora_inicio,'00:00:00')";
   $res = $cn->query($sql);
 
   $eventos = [];
   while ($e = $res->fetch_assoc()) {
-    $allDay = empty($e['hora_inicio']); // si no hay hora => evento de todo el día
+    $allDay    = empty($e['hora_inicio']); // si no hay hora => evento de todo el día
+    $categoria = $e['categoria'] ?: 'general';
+
     if ($allDay) {
       $eventos[] = [
-        'id'    => (int)$e['id'],
-        'title' => $e['titulo'],
-        'start' => $e['fecha'], // allDay
-        'allDay'=> true,
-        'extendedProps' => ['descripcion' => $e['descripcion']]
+        'id'           => (int)$e['id'],
+        'title'        => $e['titulo'],
+        'start'        => $e['fecha'], // allDay
+        'allDay'       => true,
+        'classNames'   => ["cat-{$categoria}"],
+        'extendedProps'=> [
+          'descripcion' => $e['descripcion'],
+          'categoria'   => $categoria
+        ]
       ];
     } else {
       $start = $e['fecha'] . 'T' . $e['hora_inicio'];
       $end   = !empty($e['hora_fin']) ? ($e['fecha'] . 'T' . $e['hora_fin']) : null;
+
       $ev = [
-        'id'    => (int)$e['id'],
-        'title' => $e['titulo'],
-        'start' => $start,
-        'allDay'=> false,
-        'extendedProps' => ['descripcion' => $e['descripcion']]
+        'id'           => (int)$e['id'],
+        'title'        => $e['titulo'],
+        'start'        => $start,
+        'allDay'       => false,
+        'classNames'   => ["cat-{$categoria}"],
+        'extendedProps'=> [
+          'descripcion' => $e['descripcion'],
+          'categoria'   => $categoria
+        ]
       ];
       if ($end) $ev['end'] = $end;
       $eventos[] = $ev;

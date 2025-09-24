@@ -1,6 +1,27 @@
 document.addEventListener('DOMContentLoaded', function () {
   const calendarEl = document.getElementById('calendar');
 
+  // ===== Catálogo de categorías (value para DB, label para UI) =====
+  // Quedan: General, Reunión, Licencia, Audiencia, Actividad
+  const CATEGORIAS = [
+    { value: 'general',   label: 'General' },
+    { value: 'reunion',   label: 'Reunión' },
+    { value: 'licencia',  label: 'Licencia' },
+    { value: 'audiencia', label: 'Audiencia' },
+    { value: 'actividad', label: 'Actividad' }
+  ];
+  const catOptions = CATEGORIAS.map(c => `<option value="${c.value}">${c.label}</option>`).join('');
+
+  // ===== Colores por categoría (fallback por si el CSS no aplica) =====
+  const COLOR_MAP = {
+    general:   { bg: '#7c1c2c', border: '#7c1c2c', text: '#ffffff' }, // bordó
+    reunion:   { bg: '#0d6efd', border: '#0d6efd', text: '#ffffff' }, // azul
+    licencia:  { bg: '#198754', border: '#198754', text: '#ffffff' }, // verde
+    audiencia: { bg: '#6f42c1', border: '#6f42c1', text: '#ffffff' }, // violeta
+    actividad: { bg: '#fd7e14', border: '#fd7e14', text: '#ffffff' }  // naranja
+  };
+  const fallbackColor = COLOR_MAP.general;
+
   const calendar = new FullCalendar.Calendar(calendarEl, {
     locale: 'es',
     initialView: 'dayGridMonth',
@@ -12,7 +33,7 @@ document.addEventListener('DOMContentLoaded', function () {
       right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
     },
 
-    // ====== BANDAS HORARIAS (ajustá a gusto) ======
+    // ====== BANDAS HORARIAS ======
     slotMinTime: '07:00:00',     // primera franja visible
     slotMaxTime: '20:00:00',     // última franja visible
     slotDuration: '00:30:00',    // paso entre slots
@@ -33,11 +54,17 @@ document.addEventListener('DOMContentLoaded', function () {
     events: '../api/api-agenda.php',
     eventTimeFormat: { hour: '2-digit', minute: '2-digit', meridiem: false },
 
-    // click en un día (o en un slot en vistas de tiempo)
+    // Agregamos clase por categoría para permitir estilado vía CSS (.cat-xxxx)
+    eventClassNames: function (arg) {
+      const cat = (arg.event.extendedProps && arg.event.extendedProps.categoria) || 'general';
+      return [`cat-${cat}`];
+    },
+
+    // click en un día/slot -> crear evento
     selectable: true,
     selectMirror: true,
     select: async function (info) {
-      // info.start / info.end pueden traer hora en timeGrid; usamos sólo la fecha para el modal
+      // En timeGrid puede venir hora; mostramos solo la fecha en el modal
       const fecha = info.startStr.slice(0, 10);
 
       const { value: formValues } = await Swal.fire({
@@ -49,6 +76,9 @@ document.addEventListener('DOMContentLoaded', function () {
             <input id="swal-hini" type="time" class="swal2-input" style="width:140px" placeholder="Hora inicio">
             <input id="swal-hfin" type="time" class="swal2-input" style="width:140px" placeholder="Hora fin">
           </div>
+          <select id="swal-cat" class="swal2-input" style="width:100%;max-width:300px">
+            ${catOptions}
+          </select>
           <div class="swal2-html-container" style="margin-top:4px">Fecha: <b>${fecha}</b></div>
         `,
         focusConfirm: false,
@@ -60,6 +90,7 @@ document.addEventListener('DOMContentLoaded', function () {
           const descripcion = document.getElementById('swal-desc').value.trim();
           const hini = document.getElementById('swal-hini').value;
           const hfin = document.getElementById('swal-hfin').value;
+          const categoria = document.getElementById('swal-cat').value || 'general';
 
           if (!titulo) {
             Swal.showValidationMessage('Poné un título');
@@ -73,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function () {
             Swal.showValidationMessage('La hora fin debe ser mayor que la de inicio');
             return false;
           }
-          return { titulo, descripcion, fecha, hora_inicio: hini, hora_fin: hfin };
+          return { titulo, descripcion, fecha, hora_inicio: hini, hora_fin: hfin, categoria };
         }
       });
 
@@ -106,6 +137,7 @@ document.addEventListener('DOMContentLoaded', function () {
       // si tiene hora, las leemos; si es allDay, vacías
       const hIni = e.allDay ? '' : (e.start?.toTimeString().slice(0,5) || '');
       const hFin = (e.end && !e.allDay) ? e.end.toTimeString().slice(0,5) : '';
+      const catActual = e.extendedProps?.categoria || 'general';
 
       const popup = await Swal.fire({
         title: 'Evento',
@@ -116,6 +148,9 @@ document.addEventListener('DOMContentLoaded', function () {
             <input id="swal-hini" type="time" class="swal2-input" style="width:140px" value="${hIni}">
             <input id="swal-hfin" type="time" class="swal2-input" style="width:140px" value="${hFin}">
           </div>
+          <select id="swal-cat" class="swal2-input" style="width:100%;max-width:300px">
+            ${CATEGORIAS.map(c => `<option value="${c.value}" ${c.value===catActual?'selected':''}>${c.label}</option>`).join('')}
+          </select>
           <div class="swal2-html-container" style="margin-top:4px">Fecha: <b>${fecha}</b></div>
         `,
         showDenyButton: true,
@@ -130,6 +165,7 @@ document.addEventListener('DOMContentLoaded', function () {
           const desc = document.getElementById('swal-desc').value.trim();
           const hini = document.getElementById('swal-hini').value;
           const hfin = document.getElementById('swal-hfin').value;
+          const categoria = document.getElementById('swal-cat').value || 'general';
 
           if (!titulo) {
             Swal.showValidationMessage('Poné un título');
@@ -143,7 +179,7 @@ document.addEventListener('DOMContentLoaded', function () {
             Swal.showValidationMessage('La hora fin debe ser mayor que la de inicio');
             return false;
           }
-          return { titulo, descripcion: desc, fecha, hora_inicio: hini, hora_fin: hfin };
+          return { titulo, descripcion: desc, fecha, hora_inicio: hini, hora_fin: hfin, categoria };
         }
       });
 
@@ -196,11 +232,24 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     },
 
-    // tooltip simple + recordatorio 1 día antes
+    // tooltip + color por categoría + recordatorio 1 día antes
     eventDidMount: function (info) {
       const descripcion = info.event.extendedProps.descripcion || '';
       info.el.setAttribute('title', `${info.event.title}\n${descripcion}`);
 
+      // === Color por categoría (inline, para que no lo pisen otros CSS) ===
+      const cat = (info.event.extendedProps && info.event.extendedProps.categoria) || 'general';
+      const col = COLOR_MAP[cat] || fallbackColor;
+      // el elemento raíz del evento
+      info.el.style.backgroundColor = col.bg;
+      info.el.style.borderColor = col.border;
+      info.el.style.color = col.text;
+
+      // extra: a veces el texto está en nodos internos:
+      const mains = info.el.querySelectorAll('.fc-event-title, .fc-event-time, .fc-event-main, .fc-event-main-frame, .fc-list-event-title a');
+      mains.forEach(n => { n.style.color = col.text; });
+
+      // === Recordatorio simple: 1 día antes ===
       const normalize = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
       const hoy = normalize(new Date());
       const fechaEvento = normalize(info.event.start);

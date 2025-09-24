@@ -20,9 +20,10 @@ try {
   exit;
 }
 
-$titulo      = $_POST['titulo']      ?? '';
-$descripcion = $_POST['descripcion'] ?? '';
-$fecha       = $_POST['fecha']       ?? '';       // YYYY-MM-DD
+$titulo      = trim($_POST['titulo']      ?? '');
+$descripcion = trim($_POST['descripcion'] ?? '');
+$fecha       = trim($_POST['fecha']       ?? '');       // YYYY-MM-DD
+$categoria   = trim($_POST['categoria']   ?? 'general');
 $hIni        = normTime($_POST['hora_inicio'] ?? '');
 $hFin        = normTime($_POST['hora_fin']    ?? '');
 
@@ -31,13 +32,17 @@ if ($titulo === '' || $fecha === '') {
   echo json_encode(["success" => false, "error" => "Faltan campos obligatorios"]);
   exit;
 }
+
 // Si hay hora fin sin hora inicio, la descartamos
 if ($hFin && !$hIni) $hFin = null;
-// Si hay ambas y fin <= inicio, las dejamos nulas para evitar incoherencias
+// Si hay ambas y fin <= inicio, anulamos fin
 if ($hIni && $hFin && $hFin <= $hIni) $hFin = null;
 
-$stmt = $cn->prepare("INSERT INTO eventos (titulo, descripcion, fecha, hora_inicio, hora_fin) VALUES (?,?,?,?,?)");
-$stmt->bind_param("sssss", $titulo, $descripcion, $fecha, $hIni, $hFin);
+$stmt = $cn->prepare("
+  INSERT INTO eventos (titulo, descripcion, fecha, hora_inicio, hora_fin, categoria)
+  VALUES (?,?,?,?,?,?)
+");
+$stmt->bind_param("ssssss", $titulo, $descripcion, $fecha, $hIni, $hFin, $categoria);
 
 if ($stmt->execute()) {
   echo json_encode(["success" => true, "id" => $stmt->insert_id]);

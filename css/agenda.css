@@ -142,3 +142,58 @@ body{
 .swal2-title{ font-size:1.4rem; color:#722F37; }
 .swal2-input, .swal2-textarea{ border-radius:6px; border:1px solid #ccc; }
 .swal2-confirm{ background-color:#a0323e !important; }
+
+/* =========================
+   COLORES POR CATEGORÍA
+   ========================= */
+
+/* Helper para que cualquier evento con clase cat-* fuerce su color */
+.fc .fc-event[class*="cat-"],
+.fc .fc-daygrid-event[class*="cat-"] {
+  color: #fff !important;
+  border: none !important;
+}
+
+/* Month: dot-event (los que muestran puntito/hora) */
+.fc .fc-daygrid-event[class*="cat-"].fc-daygrid-dot-event {
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+/* Week/Day: timegrid/vertical */
+.fc .fc-timegrid-event[class*="cat-"],
+.fc .fc-v-event[class*="cat-"] {
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.1);
+}
+
+/* ===== Paleta (podés cambiar los colores a gusto) ===== */
+.fc .fc-event.cat-general,
+.fc .fc-daygrid-event.cat-general,
+.fc .fc-timegrid-event.cat-general,
+.fc .fc-v-event.cat-general { background: #7c1c2c !important; } /* Bordó base */
+
+.fc .fc-event.cat-reunion,
+.fc .fc-daygrid-event.cat-reunion,
+.fc .fc-timegrid-event.cat-reunion,
+.fc .fc-v-event.cat-reunion { background: #0d6efd !important; } /* Azul */
+
+.fc .fc-event.cat-licencia,
+.fc .fc-daygrid-event.cat-licencia,
+.fc .fc-timegrid-event.cat-licencia,
+.fc .fc-v-event.cat-licencia { background: #6c757d !important; } /* Gris */
+
+.fc .fc-event.cat-audiencia,
+.fc .fc-daygrid-event.cat-audiencia,
+.fc .fc-timegrid-event.cat-audiencia,
+.fc .fc-v-event.cat-audiencia { background: #20c997 !important; } /* Verde agua */
+
+.fc .fc-event.cat-vencimiento,
+.fc .fc-daygrid-event.cat-vencimiento,
+.fc .fc-timegrid-event.cat-vencimiento,
+.fc .fc-v-event.cat-vencimiento { background: #dc3545 !important; } /* Rojo */
+
+.fc .fc-event.cat-tarea,
+.fc .fc-daygrid-event.cat-tarea,
+.fc .fc-timegrid-event.cat-tarea,
+.fc .fc-v-event.cat-tarea { background: #ffc107 !important; color:#212529 !important; } /* Amarillo con texto oscuro */
