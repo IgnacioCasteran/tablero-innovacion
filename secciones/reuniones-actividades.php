@@ -774,11 +774,13 @@ function buildDescripcionAgenda(data) {
     return partes.join('\n');
 }
 
-async function crearEventoAgenda({ titulo, descripcion, fecha }) {
+// >>> CORREGIDO: acepta y envía 'categoria'
+async function crearEventoAgenda({ titulo, descripcion, fecha, categoria }) {
     const fd = new FormData();
     fd.append('titulo', titulo);
     fd.append('descripcion', descripcion || '');
-    fd.append('fecha', fecha); // YYYY-MM-DD
+    fd.append('fecha', fecha);       // YYYY-MM-DD
+    fd.append('categoria', categoria || 'general');  // <<<<<<
 
     const res = await fetch('../api/api-agregar-evento.php', { method: 'POST', body: fd });
     const data = await res.json();
@@ -794,6 +796,9 @@ document.querySelectorAll('.btn-agenda').forEach(btn => {
         const titulo = (reg.tarea || '').trim() || 'Sin título';
         const descripcion = buildDescripcionAgenda(reg);
 
+        // >>> CORREGIDO: mapear tipo -> categoria para colores en Agenda
+        const categoria = (String(reg.tipo).toLowerCase() === 'reunion') ? 'reunion' : 'actividad';
+
         try {
             const pick = await Swal.fire({
                 title: 'Elegí la fecha del evento',
@@ -806,7 +811,7 @@ document.querySelectorAll('.btn-agenda').forEach(btn => {
             if (!pick.isConfirmed || !pick.value) return;
 
             const fecha = pick.value; // YYYY-MM-DD
-            await crearEventoAgenda({ titulo, descripcion, fecha });
+            await crearEventoAgenda({ titulo, descripcion, fecha, categoria }); // <<<<<<
 
             const go = await Swal.fire({
                 icon: 'success',
