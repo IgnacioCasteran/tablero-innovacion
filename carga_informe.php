@@ -155,45 +155,95 @@ if (!isset($_SESSION['usuario'])) {
   </div>
 
   <script>
+    // ===== Datos fijos =====
     const oficinasPorCircunscripcion = {
-      I: [
-        "Oficina Judicial Penal",
-        "Oficina de Gestión Común Civil",
-        "Oficina de Gestión Judicial de Familia"
-      ],
-      II: [
-        "Oficina Judicial Penal",
-        "Oficina de Gestión Judicial de Familia"
-      ],
-      III: [
-        "Oficina Judicial Penal",
-        "Ciudad General Acha",
-        "Ciudad 25 de Mayo"
-      ],
-      IV: [
-        "Judicial Penal"
-      ]
+      I: ["Oficina Judicial Penal", "Oficina de Gestión Común Civil", "Oficina de Gestión Judicial de Familia"],
+      II: ["Oficina Judicial Penal", "Oficina de Gestión Judicial de Familia"],
+      III: ["Oficina Judicial Penal", "Ciudad General Acha", "Ciudad 25 de Mayo"],
+      IV: ["Judicial Penal"]
     };
 
-    function actualizarOficinas() {
-      const circ = document.getElementById("circunscripcion").value;
-      const oficinaSelect = document.getElementById("oficina_judicial");
-      oficinaSelect.innerHTML = "<option value='' disabled selected hidden>Seleccionar una oficina</option>";
+    /** Pobla el select de oficinas y preselecciona si corresponde */
+    function actualizarOficinas(circValue = null, preselect = null) {
+      const circSel = document.getElementById("circunscripcion");
+      const oficinaSel = document.getElementById("oficina_judicial");
+
+      const circ = (circValue ?? circSel.value) || "";
+      oficinaSel.innerHTML = "<option value='' disabled selected hidden>Seleccionar una oficina</option>";
 
       if (oficinasPorCircunscripcion[circ]) {
-        oficinasPorCircunscripcion[circ].forEach(oficina => {
-          const option = document.createElement("option");
-          option.value = oficina;
-          option.textContent = oficina;
-          oficinaSelect.appendChild(option);
+        oficinasPorCircunscripcion[circ].forEach(of => {
+          const opt = document.createElement("option");
+          opt.value = of;
+          opt.textContent = of;
+          oficinaSel.appendChild(opt);
         });
       }
 
-      oficinaSelect.value = "";
-      if (typeof actualizarCategorias === "function") actualizarCategorias();
-      if (typeof actualizarEmpleados === "function") actualizarEmpleados();
+      // restaurar oficina si está disponible
+      const toSelect = preselect || localStorage.getItem("oficina_judicial") || "";
+      if (toSelect && [...oficinaSel.options].some(o => o.value === toSelect)) {
+        oficinaSel.value = toSelect;
+      } else {
+        oficinaSel.value = "";
+      }
     }
+
+    // ===== Persistencia en localStorage =====
+    function persistOnChange(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+
+      el.addEventListener("change", () => {
+        localStorage.setItem(id, el.value || "");
+        if (id === "circunscripcion") {
+          // si cambia la circunscripción, repoblamos oficinas y limpiamos selección previa
+          localStorage.removeItem("oficina_judicial");
+          actualizarOficinas(el.value, null);
+        }
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const circSel = document.getElementById("circunscripcion");
+      const oficinaSel = document.getElementById("oficina_judicial");
+
+      // escuchar cambios para guardar
+      persistOnChange("circunscripcion");
+      persistOnChange("oficina_judicial");
+
+      // Restaurar al cargar: primero circ → luego oficinas → luego oficina
+      const savedCirc = localStorage.getItem("circunscripcion");
+      if (savedCirc) {
+        circSel.value = savedCirc;
+        actualizarOficinas(savedCirc, localStorage.getItem("oficina_judicial"));
+      } else {
+        actualizarOficinas(); // estado inicial
+      }
+
+      // Si después de guardar estás haciendo form.reset(), re-aplicamos inmediatamente
+      const form = document.querySelector("form");
+      if (form) {
+        form.addEventListener("reset", () => {
+          // aplicar valores guardados tras el reset
+          setTimeout(() => {
+            const sc = localStorage.getItem("circunscripcion") || "";
+            circSel.value = sc || "";
+            actualizarOficinas(sc, localStorage.getItem("oficina_judicial") || "");
+          }, 0);
+        });
+      }
+
+      // Si mostrás un modal de éxito y NO hacés reset, no hay que hacer nada más.
+      // Si al cerrar el modal hacés reset manual, asegurate de disparar form.reset().
+      // Ejemplo (opcional):
+      // const modal = document.getElementById('modalConfirmacion');
+      // modal?.addEventListener('hidden.bs.modal', () => form?.reset());
+    });
   </script>
+
+
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="js/cargar-informe.js"></script>
 
