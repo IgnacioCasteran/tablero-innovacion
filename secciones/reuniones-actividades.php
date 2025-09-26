@@ -65,7 +65,6 @@ function fmtDate(?string $s): string
     return $dt ? $dt->format('d/m/Y') : '—';
 }
 
-
 $cn->close();
 ?>
 <!DOCTYPE html>
@@ -81,231 +80,50 @@ $cn->close();
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
-        body {
-            background-color: #f4f6f9;
+        body { background-color: #f4f6f9; }
+        h1, h2 { color: #7c1c2c; }
+        .card { border-left: 5px solid #7c1c2c; }
+        .table th { background-color: #eaeaea; }
+        thead tr.filters th { background: #fafafa; }
+        thead tr.filters .form-control, thead tr.filters .form-select { font-size:.85rem; padding:.15rem .4rem; }
+        thead tr.filters .btn-clear { font-size:.8rem; }
+        .badge-completado { background:#28a745!important; color:#fff; }
+        .badge-en-curso { background:#ffc107!important; color:#000; }
+        .badge-no-iniciada { background:#0d6efd!important; color:#fff; }
+        .badge-bloqueada { background:#dc3545!important; color:#fff; }
+        .badge-otros { background:#6f42c1!important; color:#fff; }
+        .badge-ciudadania { background:#0dcaf0!important; color:#fff; }
+        .badge-penal { background:#ff6b6b!important; color:#fff; }
+        .badge-civil { background:#28d5a0!important; color:#fff; }
+        .badge-familia { background:#ffc107!important; color:#000; }
+        .badge-cyq { background:#adb5bd!important; color:#000; }
+        .fila-fijada { background:#fff8e1; }
+        .fila-fijada .pin-icon { color:#f0ad4e!important; }
+        .badge-prioridad { background:#f0ad4e; color:#000; }
+        .actions-wrap { gap:.5rem; }
+        @media (max-width:576px){
+            h1{font-size:1.35rem} h2{font-size:1.15rem} .badge{font-size:.85rem}
+            .actions-wrap{flex-direction:column}.actions-wrap .btn{width:100%}
+            .table th,.table td{font-size:.95rem}
+            .table-responsive{-webkit-overflow-scrolling:touch}
         }
-
-        h1,
-        h2 {
-            color: #7c1c2c;
+        @media (max-width:575.98px){
+            .ra-card{border:1px solid #e9ecef;border-left:5px solid #7c1c2c;border-radius:12px;background:#fff;padding:12px 12px 8px;margin-bottom:12px;box-shadow:0 2px 6px rgba(0,0,0,.05)}
+            .ra-title{font-weight:600;margin-bottom:6px}
+            .ra-row{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:.95rem}
+            .ra-row .full{grid-column:1 / -1}
+            .ra-meta{color:#6c757d;font-size:.9rem}
+            .ra-actions{display:flex;gap:8px;margin-top:8px}
+            .badge{font-size:.85rem}
+            .section-title{padding:10px 15px;margin:0 -15px 20px;background:linear-gradient(to right,#fdf0eb,#f9d9d1);border-left:5px solid #7c1c2c;font-weight:bold;box-shadow:0 2px 4px rgba(0,0,0,.05)}
         }
-
-        .card {
-            border-left: 5px solid #7c1c2c;
-        }
-
-        .table th {
-            background-color: #eaeaea;
-        }
-
-        thead tr.filters th {
-            background: #fafafa;
-        }
-
-        thead tr.filters .form-control,
-        thead tr.filters .form-select {
-            font-size: .85rem;
-            padding: .15rem .4rem;
-        }
-
-        thead tr.filters .btn-clear {
-            font-size: .8rem;
-        }
-
-        .badge-completado {
-            background: #28a745 !important;
-            color: #fff;
-        }
-
-        .badge-en-curso {
-            background: #ffc107 !important;
-            color: #000;
-        }
-
-        .badge-no-iniciada {
-            background: #0d6efd !important;
-            color: #fff;
-        }
-
-        .badge-bloqueada {
-            background: #dc3545 !important;
-            color: #fff;
-        }
-
-        .badge-otros {
-            background: #6f42c1 !important;
-            color: #fff;
-        }
-
-        .badge-ciudadania {
-            background: #0dcaf0 !important;
-            color: #fff;
-        }
-
-        .badge-penal {
-            background: #ff6b6b !important;
-            color: #fff;
-        }
-
-        .badge-civil {
-            background: #28d5a0 !important;
-            color: #fff;
-        }
-
-        .badge-familia {
-            background: #ffc107 !important;
-            color: #000;
-        }
-
-        .badge-cyq {
-            background: #adb5bd !important;
-            color: #000;
-        }
-
-        .fila-fijada {
-            background: #fff8e1;
-        }
-
-        .fila-fijada .pin-icon {
-            color: #f0ad4e !important;
-        }
-
-        .badge-prioridad {
-            background: #f0ad4e;
-            color: #000;
-        }
-
-        .actions-wrap {
-            gap: .5rem;
-        }
-
-        @media (max-width:576px) {
-            h1 {
-                font-size: 1.35rem
-            }
-
-            h2 {
-                font-size: 1.15rem
-            }
-
-            .badge {
-                font-size: .85rem
-            }
-
-            .actions-wrap {
-                flex-direction: column
-            }
-
-            .actions-wrap .btn {
-                width: 100%
-            }
-
-            .table th,
-            .table td {
-                font-size: .95rem
-            }
-
-            .table-responsive {
-                -webkit-overflow-scrolling: touch
-            }
-        }
-
-        @media (max-width:575.98px) {
-            .ra-card {
-                border: 1px solid #e9ecef;
-                border-left: 5px solid #7c1c2c;
-                border-radius: 12px;
-                background: #fff;
-                padding: 12px 12px 8px;
-                margin-bottom: 12px;
-                box-shadow: 0 2px 6px rgba(0, 0, 0, .05)
-            }
-
-            .ra-title {
-                font-weight: 600;
-                margin-bottom: 6px
-            }
-
-            .ra-row {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 6px 10px;
-                font-size: .95rem
-            }
-
-            .ra-row .full {
-                grid-column: 1 / -1
-            }
-
-            .ra-meta {
-                color: #6c757d;
-                font-size: .9rem
-            }
-
-            .ra-actions {
-                display: flex;
-                gap: 8px;
-                margin-top: 8px
-            }
-
-            .badge {
-                font-size: .85rem
-            }
-
-            .section-title {
-                padding: 10px 15px;
-                margin: 0 -15px 20px;
-                background: linear-gradient(to right, #fdf0eb, #f9d9d1);
-                border-left: 5px solid #7c1c2c;
-                font-weight: bold;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, .05)
-            }
-        }
-
-        .fila-fijada td {
-            background: #fff3cd !important;
-            border-top: 1px solid #ffe08a !important;
-            border-bottom: 1px solid #ffe08a !important
-        }
-
-        .fila-fijada td:first-child {
-            box-shadow: inset 8px 0 0 #f0ad4e
-        }
-
-        .fila-fijada .pin-icon {
-            color: #d97706 !important;
-            font-size: 1.15rem
-        }
-
-        .ra-card.fila-fijada {
-            background: #fff3cd;
-            border-left: 8px solid #f0ad4e;
-            box-shadow: 0 0 0 2px #ffe08a inset
-        }
-
-        .ra-card.fila-fijada .pin-icon {
-            color: #d97706 !important
-        }
-
-        .ra-card.fila-fijada .ra-title::before {
-            content: "PRIORIDAD";
-            display: inline-block;
-            margin-right: .4rem;
-            padding: 2px 8px;
-            font-size: .75rem;
-            font-weight: 700;
-            background: #f0ad4e;
-            color: #000;
-            border-radius: 6px
-        }
-
-        @media (min-width:768px) {
-            .section-title {
-                margin: 0 0 20px 0;
-                border-left: 5px solid #7c1c2c;
-                border-radius: 4px
-            }
-        }
+        .fila-fijada td{background:#fff3cd!important;border-top:1px solid #ffe08a!important;border-bottom:1px solid #ffe08a!important}
+        .fila-fijada td:first-child{box-shadow:inset 8px 0 0 #f0ad4e}
+        .fila-fijada .pin-icon{color:#d97706!important;font-size:1.15rem}
+        .ra-card.fila-fijada{background:#fff3cd;border-left:8px solid #f0ad4e;box-shadow:0 0 0 2px #ffe08a inset}
+        .ra-card.fila-fijada .pin-icon{color:#d97706!important}
+        .ra-card.fila-fijada .ra-title::before{content:"PRIORIDAD";display:inline-block;margin-right:.4rem;padding:2px 8px;font-size:.75rem;font-weight:700;background:#f0ad4e;color:#000;border-radius:6px}
+        @media (min-width:768px){ .section-title{margin:0 0 20px 0;border-left:5px solid #7c1c2c;border-radius:4px} }
     </style>
 </head>
 
@@ -346,21 +164,19 @@ $cn->close();
                                 <th>Estado</th>
                                 <th>Organismo</th>
                                 <th>Notas</th>
+                                <th>Documento Adjunto</th>
                                 <th>Fecha de inicio</th>
                                 <th>Fecha de finalización</th>
                                 <th>Acciones</th>
                             </tr>
                             <tr class="filters">
                                 <th><input type="text" class="form-control form-control-sm" placeholder="Filtrar…"></th>
-                                <th><select class="form-select form-select-sm">
-                                        <option value="">Todos</option>
-                                    </select></th>
-                                <th><select class="form-select form-select-sm">
-                                        <option value="">Todos</option>
-                                    </select></th>
+                                <th><select class="form-select form-select-sm"><option value="">Todos</option></select></th>
+                                <th><select class="form-select form-select-sm"><option value="">Todos</option></select></th>
                                 <th></th>
-                                <th></th>
-                                <th></th>
+                                <th></th> <!-- doc -->
+                                <th></th> <!-- fecha inicio -->
+                                <th></th> <!-- fecha fin -->
                                 <th><button type="button" class="btn btn-sm btn-outline-secondary w-100 btn-clear">Limpiar Filtros</button></th>
                             </tr>
                         </thead>
@@ -371,6 +187,11 @@ $cn->close();
                                     <td><span class="badge <?= obtenerClaseEstado($p['estado']) ?>"><?= htmlspecialchars($p['estado']) ?></span></td>
                                     <td><?= $p['organismo'] ? htmlspecialchars($p['organismo']) : '—' ?></td>
                                     <td><?= htmlspecialchars($p['notas']) ?></td>
+                                    <td>
+                                        <?php if (!empty($p['archivo'])): ?>
+                                            <a href="../uploads/reuniones/<?= $p['archivo'] ?>" target="_blank" class="btn btn-sm btn-primary">Ver archivo</a>
+                                        <?php else: ?> — <?php endif; ?>
+                                    </td>
                                     <td><?= fmtDate($p['fecha_inicio']) ?></td>
                                     <td><?= $p['fecha_fin'] ? fmtDate($p['fecha_fin']) : '—' ?></td>
 
@@ -409,6 +230,11 @@ $cn->close();
                                 <div class="full"><span class="badge <?= obtenerClaseEstado($p['estado']) ?>"><?= htmlspecialchars($p['estado']) ?></span></div>
                                 <?php if (!empty($p['organismo'])): ?><div class="full ra-meta"><strong>Organismo:</strong> <?= htmlspecialchars($p['organismo']) ?></div><?php endif; ?>
                                 <?php if (!empty($p['notas'])): ?><div class="full ra-meta"><strong>Notas:</strong> <?= htmlspecialchars($p['notas']) ?></div><?php endif; ?>
+                                <?php if (!empty($p['archivo'])): ?>
+                                    <div class="full">
+                                        <a href="../uploads/reuniones/<?= $p['archivo'] ?>" target="_blank" class="btn btn-sm btn-primary">Ver archivo</a>
+                                    </div>
+                                <?php endif; ?>
                                 <div><strong>Inicio:</strong> <?= fmtDate($p['fecha_inicio']) ?></div>
                                 <div><strong>Fin:</strong> <?= $p['fecha_fin'] ? fmtDate($p['fecha_fin']) : '—' ?></div>
                             </div>
@@ -444,6 +270,7 @@ $cn->close();
                                 <th>Estado</th>
                                 <th>Organismo</th>
                                 <th>Notas</th>
+                                <th>Documento Adjunto</th>
                                 <th>Fecha de inicio</th>
                                 <th>Fecha de finalización</th>
                                 <th>Acciones</th>
@@ -456,6 +283,11 @@ $cn->close();
                                     <td><span class="badge <?= obtenerClaseEstado($p['estado']) ?>"><?= htmlspecialchars($p['estado']) ?></span></td>
                                     <td><?= $p['organismo'] ? htmlspecialchars($p['organismo']) : '—' ?></td>
                                     <td><?= htmlspecialchars($p['notas']) ?></td>
+                                    <td>
+                                        <?php if (!empty($p['archivo'])): ?>
+                                            <a href="../uploads/reuniones/<?= $p['archivo'] ?>" target="_blank" class="btn btn-sm btn-primary">Ver archivo</a>
+                                        <?php else: ?> — <?php endif; ?>
+                                    </td>
                                     <td><?= fmtDate($p['fecha_inicio']) ?></td>
                                     <td><?= $p['fecha_fin'] ? fmtDate($p['fecha_fin']) : '—' ?></td>
                                     <td class="text-nowrap">
@@ -504,9 +336,7 @@ $cn->close();
                             <tr class="filters">
                                 <th></th>
                                 <th><input type="text" class="form-control form-control-sm" placeholder="Filtrar…"></th>
-                                <th><select class="form-select form-select-sm">
-                                        <option value="">Todos</option>
-                                    </select></th>
+                                <th><select class="form-select form-select-sm"><option value="">Todos</option></select></th>
                                 <th></th>
                                 <th></th>
                                 <th><button type="button" class="btn btn-sm btn-outline-secondary w-100 btn-clear">Limpiar Filtros</button></th>
@@ -676,16 +506,12 @@ $cn->close();
 
                                 <div id="grp-estado" class="col-sm-6">
                                     <label class="form-label">Estado (actividad)</label>
-                                    <select id="edit-estado" name="estado" class="form-select">
-                                        <!-- opciones se cargan por JS -->
-                                    </select>
+                                    <select id="edit-estado" name="estado" class="form-select"></select>
                                 </div>
 
                                 <div id="grp-organismo" class="col-sm-6">
                                     <label class="form-label">Organismo / Proyecto (reunión)</label>
-                                    <select id="edit-organismo" class="form-select">
-                                        <!-- opciones se cargan por JS -->
-                                    </select>
+                                    <select id="edit-organismo" class="form-select"></select>
                                     <input id="edit-organismo-otro" class="form-control mt-2 d-none" placeholder="Especifique organismo / proyecto">
                                 </div>
 
@@ -694,23 +520,17 @@ $cn->close();
                                     <input id="edit-asistentes" name="asistentes" class="form-control">
                                 </div>
 
-                                <!-- Archivo (solo para reunión) -->
-                                <div id="grp-archivo" class="col-12 d-none">
-                                    <label class="form-label">Documento adjunto (reunión)</label>
-
-                                    <!-- Link al archivo actual (si existe) -->
+                                <!-- Archivo (para reunión y actividad) -->
+                                <div id="grp-archivo" class="col-12">
+                                    <label class="form-label">Documento adjunto</label>
                                     <div class="mb-2" id="edit-archivo-actual-wrap" style="display:none">
                                         <small>Archivo actual: <a id="edit-archivo-link" href="#" target="_blank" rel="noopener">ver archivo</a></small>
                                     </div>
-
-                                    <!-- Input file para reemplazar / subir -->
                                     <input id="edit-archivo" name="archivo" type="file" class="form-control"
                                         accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif">
-
-                                    <!-- Campo oculto para avisar al backend cuál era el archivo anterior -->
                                     <input type="hidden" id="edit-archivo-actual" name="archivo_actual" value="">
                                     <small class="text-muted d-block mt-1">
-                                        Si seleccionás un archivo nuevo reemplaza al anterior.
+                                        Si seleccionás un archivo nuevo, reemplaza al anterior.
                                     </small>
                                 </div>
 
@@ -747,12 +567,10 @@ $cn->close();
 
             const norm = s => (s || '').toString().trim().toLowerCase();
 
-            const grpArchivo = document.getElementById('grp-archivo');
             const archivoActualWrap = document.getElementById('edit-archivo-actual-wrap');
             const archivoLink = document.getElementById('edit-archivo-link');
             const inpArchivo = document.getElementById('edit-archivo');
             const hidArchivoActual = document.getElementById('edit-archivo-actual');
-
 
             function fillSelect(select, values, current, addOtro = false) {
                 if (!select) return;
@@ -823,8 +641,6 @@ $cn->close();
                 const showOtro = selOrg?.value === '__OTRO__';
                 inpOtro?.classList.toggle('d-none', !showOtro);
                 if (!showOtro && inpOtro) inpOtro.value = '';
-
-                if (grpArchivo) grpArchivo.classList.toggle('d-none', tipo !== 'reunion');
             }
 
             document.getElementById('edit-organismo')?.addEventListener('change', (e) => {
@@ -883,7 +699,6 @@ $cn->close();
                         archivoLink.removeAttribute('href');
                         hidArchivoActual.value = '';
                     }
-                    // limpiar input file por si quedó algo de una edición anterior
                     if (inpArchivo) inpArchivo.value = '';
 
                     new bootstrap.Modal(document.getElementById('modalEditar')).show();
@@ -895,9 +710,8 @@ $cn->close();
                 const form = e.target;
                 const fd = new FormData(form);
                 const tipo = form.querySelector('#edit-tipo')?.value;
-                if (tipo !== 'reunion') {
-                    fd.delete('archivo');
-                }
+
+                // Resolver organismo / estado según tipo
                 const selOrg = form.querySelector('#edit-organismo');
                 const inpOrg = form.querySelector('#edit-organismo-otro');
                 let valorOrg = (selOrg?.value === '__OTRO__') ? (inpOrg?.value || '').trim() : (selOrg?.value || '').trim();
@@ -906,9 +720,10 @@ $cn->close();
                     if (valorOrg) fd.set('estado', valorOrg);
                 } else {
                     const selEstado = form.querySelector('#edit-estado');
-                    const canon = normalizarEstado(selEstado?.value) || 'No iniciada';
+                    const canon = (selEstado?.value || 'No iniciada');
                     fd.set('estado', canon);
                 }
+
                 fetch('../api/api-reuniones.php', {
                         method: 'POST',
                         body: fd
@@ -932,9 +747,7 @@ $cn->close();
                         if (r.isConfirmed) {
                             fetch('../api/api-reuniones.php', {
                                     method: 'DELETE',
-                                    body: new URLSearchParams({
-                                        id
-                                    })
+                                    body: new URLSearchParams({ id })
                                 })
                                 .then(res => res.json())
                                 .then(data => Swal.fire('Eliminado', (data && data.mensaje) || 'OK', 'success').then(() => location.reload()))
@@ -952,11 +765,7 @@ $cn->close();
                     try {
                         const res = await fetch('../api/api-reuniones.php', {
                             method: 'POST',
-                            body: new URLSearchParams({
-                                accion: 'pin',
-                                id,
-                                fijado: String(nuevo)
-                            })
+                            body: new URLSearchParams({ accion: 'pin', id, fijado: String(nuevo) })
                         });
                         const data = await res.json();
                         if (!res.ok) throw new Error(data.error || 'Error');
@@ -975,18 +784,12 @@ $cn->close();
                     try {
                         const res = await fetch('../api/api-reuniones.php', {
                             method: 'POST',
-                            headers: {
-                                'Accept': 'application/json'
-                            },
-                            body: new URLSearchParams({
-                                accion: 'finalizar',
-                                id,
-                                finalizado: String(nuevo)
-                            })
+                            headers: { 'Accept': 'application/json' },
+                            body: new URLSearchParams({ accion: 'finalizar', id, finalizado: String(nuevo) })
                         });
                         const data = await res.json();
                         if (!res.ok) throw new Error(data.error || 'Error');
-                        location.reload(); // lo mueve a la pestaña que corresponda
+                        location.reload();
                     } catch (e) {
                         Swal.fire('Error', e.message || 'No se pudo actualizar', 'error');
                     }
@@ -1106,23 +909,14 @@ $cn->close();
             return partes.join('\n');
         }
 
-        // >>> CORREGIDO: acepta y envía 'categoria'
-        async function crearEventoAgenda({
-            titulo,
-            descripcion,
-            fecha,
-            categoria
-        }) {
+        async function crearEventoAgenda({ titulo, descripcion, fecha, categoria }) {
             const fd = new FormData();
             fd.append('titulo', titulo);
             fd.append('descripcion', descripcion || '');
             fd.append('fecha', fecha); // YYYY-MM-DD
-            fd.append('categoria', categoria || 'general'); // <<<<<<
+            fd.append('categoria', categoria || 'general');
 
-            const res = await fetch('../api/api-agregar-evento.php', {
-                method: 'POST',
-                body: fd
-            });
+            const res = await fetch('../api/api-agregar-evento.php', { method: 'POST', body: fd });
             const data = await res.json();
             if (!res.ok || !data || data.success !== true) {
                 throw new Error((data && data.error) || 'Error creando evento');
@@ -1135,8 +929,6 @@ $cn->close();
                 const reg = JSON.parse(btn.dataset.reg || '{}');
                 const titulo = (reg.tarea || '').trim() || 'Sin título';
                 const descripcion = buildDescripcionAgenda(reg);
-
-                // >>> CORREGIDO: mapear tipo -> categoria para colores en Agenda
                 const categoria = (String(reg.tipo).toLowerCase() === 'reunion') ? 'reunion' : 'actividad';
 
                 try {
@@ -1151,12 +943,7 @@ $cn->close();
                     if (!pick.isConfirmed || !pick.value) return;
 
                     const fecha = pick.value; // YYYY-MM-DD
-                    await crearEventoAgenda({
-                        titulo,
-                        descripcion,
-                        fecha,
-                        categoria
-                    }); // <<<<<<
+                    await crearEventoAgenda({ titulo, descripcion, fecha, categoria });
 
                     const go = await Swal.fire({
                         icon: 'success',
