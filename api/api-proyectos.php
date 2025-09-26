@@ -35,6 +35,22 @@ function uploads_base_fs(): string
   // /ruta/absoluta/a/tu/app/uploads
   return rtrim(dirname(__DIR__) . '/uploads', '/');
 }
+function file_public_url($pid, $file)
+{
+  $pid = (int)$pid;
+  // Ruta nueva
+  $new = __DIR__ . "/../uploads/proyectos/$pid/$file";
+  if (is_file($new)) {
+    return "../uploads/proyectos/$pid/$file";
+  }
+  // Ruta legada (sin subcarpeta)
+  $legacy = __DIR__ . "/../uploads/proyectos/$file";
+  if (is_file($legacy)) {
+    return "../uploads/proyectos/$file";
+  }
+  // No existe en disco -> devolvemos ruta “nueva” para consistencia
+  return "../uploads/proyectos/$pid/$file";
+}
 
 function project_dir($projectId)
 {
@@ -168,10 +184,14 @@ if ($method === 'GET' && isset($_GET['archivos'])) {
   $stmt->execute();
   $res = $stmt->get_result();
   $out = [];
-  while ($row = $res->fetch_assoc()) $out[] = $row;
+  while ($row = $res->fetch_assoc()) {
+    $row['url'] = file_public_url($row['proyecto_id'], $row['archivo']); // <<<<<<
+    $out[] = $row;
+  }
   echo json_encode($out);
   exit;
 }
+
 
 if ($method === 'DELETE' && isset($_GET['file_id'])) {
   $fid = intval($_GET['file_id']);
@@ -304,5 +324,3 @@ switch ($method) {
 }
 
 $conn->close();
-
-
