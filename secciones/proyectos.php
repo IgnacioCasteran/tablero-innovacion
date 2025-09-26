@@ -288,7 +288,7 @@ if (!isset($_SESSION['usuario'])) {
           archivos.forEach(a => {
             const li = document.createElement('li');
             li.className = 'list-group-item d-flex justify-content-between align-items-center';
-            const url = `../uploads/proyectos/${encodeURIComponent(a.proyecto_id)}/${encodeURIComponent(a.archivo)}`;
+            const url = a.url || `../uploads/proyectos/${a.proyecto_id}/${a.archivo}`;
             li.innerHTML = `
         <div>
           <strong>${a.nombre_original}</strong>
