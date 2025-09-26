@@ -693,6 +693,27 @@ $cn->close();
                                     <label class="form-label">Asistentes (reunión)</label>
                                     <input id="edit-asistentes" name="asistentes" class="form-control">
                                 </div>
+
+                                <!-- Archivo (solo para reunión) -->
+                                <div id="grp-archivo" class="col-12 d-none">
+                                    <label class="form-label">Documento adjunto (reunión)</label>
+
+                                    <!-- Link al archivo actual (si existe) -->
+                                    <div class="mb-2" id="edit-archivo-actual-wrap" style="display:none">
+                                        <small>Archivo actual: <a id="edit-archivo-link" href="#" target="_blank" rel="noopener">ver archivo</a></small>
+                                    </div>
+
+                                    <!-- Input file para reemplazar / subir -->
+                                    <input id="edit-archivo" name="archivo" type="file" class="form-control"
+                                        accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif">
+
+                                    <!-- Campo oculto para avisar al backend cuál era el archivo anterior -->
+                                    <input type="hidden" id="edit-archivo-actual" name="archivo_actual" value="">
+                                    <small class="text-muted d-block mt-1">
+                                        Si seleccionás un archivo nuevo reemplaza al anterior.
+                                    </small>
+                                </div>
+
                             </div>
                         </div>
 
@@ -725,6 +746,13 @@ $cn->close();
             ];
 
             const norm = s => (s || '').toString().trim().toLowerCase();
+
+            const grpArchivo = document.getElementById('grp-archivo');
+            const archivoActualWrap = document.getElementById('edit-archivo-actual-wrap');
+            const archivoLink = document.getElementById('edit-archivo-link');
+            const inpArchivo = document.getElementById('edit-archivo');
+            const hidArchivoActual = document.getElementById('edit-archivo-actual');
+
 
             function fillSelect(select, values, current, addOtro = false) {
                 if (!select) return;
@@ -795,6 +823,8 @@ $cn->close();
                 const showOtro = selOrg?.value === '__OTRO__';
                 inpOtro?.classList.toggle('d-none', !showOtro);
                 if (!showOtro && inpOtro) inpOtro.value = '';
+
+                if (grpArchivo) grpArchivo.classList.toggle('d-none', tipo !== 'reunion');
             }
 
             document.getElementById('edit-organismo')?.addEventListener('change', (e) => {
@@ -841,6 +871,21 @@ $cn->close();
                             sel.value = actual;
                         }
                     }
+
+                    // Archivo actual (si hay)
+                    const nombreArchivo = (data.archivo || '').trim();
+                    if (nombreArchivo) {
+                        archivoActualWrap.style.display = '';
+                        archivoLink.href = `../uploads/reuniones/${nombreArchivo}`;
+                        hidArchivoActual.value = nombreArchivo;
+                    } else {
+                        archivoActualWrap.style.display = 'none';
+                        archivoLink.removeAttribute('href');
+                        hidArchivoActual.value = '';
+                    }
+                    // limpiar input file por si quedó algo de una edición anterior
+                    if (inpArchivo) inpArchivo.value = '';
+
                     new bootstrap.Modal(document.getElementById('modalEditar')).show();
                 });
             });
@@ -850,6 +895,9 @@ $cn->close();
                 const form = e.target;
                 const fd = new FormData(form);
                 const tipo = form.querySelector('#edit-tipo')?.value;
+                if (tipo !== 'reunion') {
+                    fd.delete('archivo');
+                }
                 const selOrg = form.querySelector('#edit-organismo');
                 const inpOrg = form.querySelector('#edit-organismo-otro');
                 let valorOrg = (selOrg?.value === '__OTRO__') ? (inpOrg?.value || '').trim() : (selOrg?.value || '').trim();
