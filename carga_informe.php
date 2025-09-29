@@ -157,7 +157,7 @@ if (!isset($_SESSION['usuario'])) {
   <script>
     // ===== Datos fijos =====
     const oficinasPorCircunscripcion = {
-      I: ["Oficina Judicial Penal", "Oficina de Gestión Común Civil", "Oficina de Gestión Judicial de Familia"],
+      I: ["Oficina Judicial Penal", "Oficina de Gestión Común Civil", "Oficina de Gestión Judicial de Familia", "Oficina de Ejecución Concursos y Quiebras"],
       II: ["Oficina Judicial Penal", "Oficina de Gestión Judicial de Familia"],
       III: ["Oficina Judicial Penal", "Ciudad General Acha", "Ciudad 25 de Mayo"],
       IV: ["Judicial Penal"]
