@@ -6,28 +6,20 @@ variables:
   DOCKER_IMAGE: $CI_REGISTRY_IMAGE/tablero-innovacion
   DOCKER_TAG: $CI_COMMIT_SHORT_SHA
   DEPLOY_USER: gitlab
+  UPLOADS_VOL: tablero_innovacion_uploads   # 🔸 volumen persistente
 
-# 🔹 Login en el registry y build
 build:
   stage: build
   image: docker:24.0.5
-  services:
-    - docker:24.0.5-dind
+  services: [ "docker:24.0.5-dind" ]
   script:
-    - echo "🔑 Login en GitLab Registry"
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" "$CI_REGISTRY" --password-stdin
-    - echo "🐳 Build de la imagen"
     - docker build -t $DOCKER_IMAGE:$DOCKER_TAG -t $DOCKER_IMAGE:latest .
-    - echo "⬆️ Push al registry"
     - docker push $DOCKER_IMAGE:$DOCKER_TAG
     - docker push $DOCKER_IMAGE:latest
-  tags:
-    - dind
-  only:
-    - main
-    - infra
+  tags: [ dind ]
+  only: [ main, infra ]
 
-# 🔹 Deploy remoto vía SSH
 deploy:
   stage: deploy
   image: alpine:latest
@@ -35,16 +27,20 @@ deploy:
     - apk add --no-cache openssh
     - chmod og= $SSH_KEY_DOCKER_01
   script:
-    - echo "🚀 Deploy en servidor"
-    - ssh -o StrictHostKeyChecking=no -i $SSH_KEY_DOCKER_01 $DEPLOY_USER@$IP_ADDRESS_DOCKER_01 "
+    - |
+      ssh -o StrictHostKeyChecking=no -i $SSH_KEY_DOCKER_01 $DEPLOY_USER@$IP_ADDRESS_DOCKER_01 "
+        set -e
         docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY &&
         docker pull $DOCKER_IMAGE:latest &&
         docker stop tablero-innovacion || true &&
-        docker rm tablero-innovacion || true &&
-        docker run -d --name tablero-innovacion -p 8089:80 --env-file /opt/tablero-innovacion/.env $DOCKER_IMAGE:latest
+        docker rm   tablero-innovacion || true &&
+        docker volume create $UPLOADS_VOL || true &&
+        docker run -d --name tablero-innovacion \
+          -p 8089:80 \
+          --env-file /opt/tablero-innovacion/.env \
+          -v $UPLOADS_VOL:/var/www/html/uploads \
+          $DOCKER_IMAGE:latest &&
+        docker exec tablero-innovacion sh -c 'mkdir -p /var/www/html/uploads && chown -R www-data:www-data /var/www/html/uploads'
       "
-  tags:
-    - dind
-  only:
-    - main
-    - infra
+  tags: [ dind ]
+  only: [ main, infra ]
