@@ -5,10 +5,8 @@ if (!isset($_SESSION['usuario'])) {
     exit();
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -17,36 +15,43 @@ if (!isset($_SESSION['usuario'])) {
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="../css/styles.css" />
 </head>
-
 <body>
-
   <div class="container py-5 text-center">
     <h2 class="mb-4">Iª Circunscripción Judicial</h2>
 
     <div class="row g-4 justify-content-center">
       <!-- Oficina Judicial Penal -->
-      <div class="col-md-4">
+      <div class="col-sm-6 col-md-4 col-lg-3">
         <a href="oficina-penal1.php" class="text-decoration-none text-dark">
-          <div class="card shadow-sm border-0 p-4">
+          <div class="card shadow-sm border-0 p-4 h-100">
             <h5 class="fw-bold mb-0">Oficina Judicial Penal</h5>
           </div>
         </a>
       </div>
 
-      <!-- Oficina Gestión Común Civil -->
-      <div class="col-md-4">
+      <!-- Oficina de Gestión Común Civil -->
+      <div class="col-sm-6 col-md-4 col-lg-3">
         <a href="oficina-civil1.php" class="text-decoration-none text-dark">
-          <div class="card shadow-sm border-0 p-4">
+          <div class="card shadow-sm border-0 p-4 h-100">
             <h5 class="fw-bold mb-0">Oficina de Gestión Común Civil</h5>
           </div>
         </a>
       </div>
 
-      <!-- Oficina Gestión Judicial de Familia -->
-      <div class="col-md-4">
+      <!-- Oficina de Gestión Judicial de Familia -->
+      <div class="col-sm-6 col-md-4 col-lg-3">
         <a href="oficina-familia1.php" class="text-decoration-none text-dark">
-          <div class="card shadow-sm border-0 p-4">
+          <div class="card shadow-sm border-0 p-4 h-100">
             <h5 class="fw-bold mb-0">Oficina de Gestión Judicial de Familia</h5>
+          </div>
+        </a>
+      </div>
+
+      <!-- NUEVA: Oficina de Ejecución Concursos y Quiebras -->
+      <div class="col-sm-6 col-md-4 col-lg-3">
+        <a href="oficina-ejecucion-cyq1.php" class="text-decoration-none text-dark">
+          <div class="card shadow-sm border-0 p-4 h-100">
+            <h5 class="fw-bold mb-0">Oficina de Ejecución Concursos y Quiebras</h5>
           </div>
         </a>
       </div>
@@ -59,5 +64,4 @@ if (!isset($_SESSION['usuario'])) {
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
-
 </html>
