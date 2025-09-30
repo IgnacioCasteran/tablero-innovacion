@@ -7,6 +7,7 @@ if (!isset($_SESSION['usuario'])) {
 ?>
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -16,12 +17,25 @@ if (!isset($_SESSION['usuario'])) {
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    body { background-color: #f4f6f9; }
-    h1, h2 { color: #7c1c2c; }
-    .card { border-left: 5px solid #7c1c2c; }
-    label { font-weight: 500; }
+    body {
+      background-color: #f4f6f9;
+    }
+
+    h1,
+    h2 {
+      color: #7c1c2c;
+    }
+
+    .card {
+      border-left: 5px solid #7c1c2c;
+    }
+
+    label {
+      font-weight: 500;
+    }
   </style>
 </head>
+
 <body>
   <div class="container py-5">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -64,7 +78,7 @@ if (!isset($_SESSION['usuario'])) {
           <!-- se llena por JS -->
         </select>
         <input type="text" class="form-control mt-2 d-none" id="organismo-otro"
-               placeholder="Especificá el organismo/proyecto">
+          placeholder="Especificá el organismo/proyecto">
       </div>
 
       <div class="mb-3">
@@ -88,9 +102,17 @@ if (!isset($_SESSION['usuario'])) {
       </div>
 
       <div class="mb-3">
-        <label class="form-label">Documento adjunto</label>
-        <input type="file" class="form-control" name="archivo" accept=".pdf,.doc,.docx">
+        <label class="form-label">Documentos adjuntos</label>
+        <input
+          type="file"
+          class="form-control"
+          name="archivos[]"
+          id="archivos"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+          multiple>
+        <div class="form-text">Podés seleccionar varios a la vez.</div>
       </div>
+
 
       <button type="submit" class="btn btn-primary">Guardar</button>
       <a href="reuniones-actividades.php" class="btn btn-secondary">Cancelar</a>
@@ -123,11 +145,12 @@ if (!isset($_SESSION['usuario'])) {
     // ==========================
     // Helpers UI
     // ==========================
-    function fillSelect(select, values, addOtro=false) {
+    function fillSelect(select, values, addOtro = false) {
       select.innerHTML = '<option value="">Seleccionar...</option>';
       values.forEach(v => {
         const opt = document.createElement('option');
-        opt.value = v; opt.textContent = v;
+        opt.value = v;
+        opt.textContent = v;
         select.appendChild(opt);
       });
       if (addOtro) {
@@ -159,14 +182,14 @@ if (!isset($_SESSION['usuario'])) {
         asistentes.classList.add('d-none');
         fillSelect(estadoSel, ESTADOS_ACT, false);
         fillSelect(orgSel, ORGANISMOS, true);
-        estadoSel.required = true;     // obligatorio en actividades
-        orgSel.required = false;       // opcional en actividades
+        estadoSel.required = true; // obligatorio en actividades
+        orgSel.required = false; // opcional en actividades
       } else if (tipo === 'reunion') {
         grpEstado.classList.add('d-none'); // no se usa estado
         grpOrg.classList.remove('d-none');
         asistentes.classList.remove('d-none');
         fillSelect(orgSel, ORGANISMOS, true);
-        orgSel.required = true;        // obligatorio en reuniones
+        orgSel.required = true; // obligatorio en reuniones
       } else {
         // nada seleccionado
         grpEstado.classList.add('d-none');
@@ -230,23 +253,36 @@ if (!isset($_SESSION['usuario'])) {
         }
         fd.set('estado', estado);
         // Organismo opcional en actividades
-        if (organismo) fd.set('organismo', organismo); else fd.delete('organismo');
+        if (organismo) fd.set('organismo', organismo);
+        else fd.delete('organismo');
       }
 
       try {
-        const res = await fetch('../api/api-reuniones.php', { method: 'POST', body: fd });
+        const res = await fetch('../api/api-reuniones.php', {
+          method: 'POST',
+          body: fd
+        });
         const data = await res.json();
         if (res.ok) {
-          await Swal.fire({ icon: 'success', title: '¡Guardado correctamente!', text: data.mensaje || 'OK' });
+          await Swal.fire({
+            icon: 'success',
+            title: '¡Guardado correctamente!',
+            text: data.mensaje || 'OK'
+          });
           form.reset();
           applyTipoUI('');
         } else {
           throw new Error(data.error || 'Error al guardar');
         }
       } catch (err) {
-        Swal.fire({ icon: 'error', title: 'Error', text: err.message || 'No se pudo guardar la reunión o actividad.' });
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: err.message || 'No se pudo guardar la reunión o actividad.'
+        });
       }
     });
   </script>
 </body>
+
 </html>
