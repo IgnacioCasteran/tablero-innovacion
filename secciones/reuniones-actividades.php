@@ -15,7 +15,9 @@ try {
 }
 
 $proyectosPend = $proyectosFin = $reunionesPend = $reunionesFin = [];
+$idsAll = [];
 
+// Trae todos los registros
 $result = $cn->query("SELECT * FROM reuniones_actividades ORDER BY fijado DESC, id DESC");
 while ($row = $result->fetch_assoc()) {
     // Compatibilidad: si es reunión y no hay 'organismo', usar 'estado'
@@ -27,16 +29,126 @@ while ($row = $result->fetch_assoc()) {
         if (!isset($row['organismo'])) $row['organismo'] = '';
     }
 
-    $isFin = !empty($row['finalizado']); // 1 = finalizado, 0 = pendiente
+    $idsAll[] = (int)$row['id'];
+
+    $isFin = !empty($row['finalizado']);
 
     if ($row['tipo'] === 'proyecto') {
-        if ($isFin) $proyectosFin[] = $row;
-        else $proyectosPend[] = $row;
-    } else { // reunion
-        if ($isFin) $reunionesFin[] = $row;
-        else $reunionesPend[] = $row;
+        if ($isFin) {
+            $proyectosFin[] = $row;
+        } else {
+            $proyectosPend[] = $row;
+        }
+    } else {
+        if ($isFin) {
+            $reunionesFin[] = $row;
+        } else {
+            $reunionesPend[] = $row;
+        }
     }
 }
+
+// Mapa de adjuntos múltiples por registro
+$adjuntos = []; // [ra_id] => [ ['filename'=>..., 'original_name'=>...], ... ]
+if (!empty($idsAll)) {
+    $in = implode(',', array_map('intval', $idsAll));
+    $sqlAdj = "SELECT ra_id, filename, original_name
+               FROM reun_activ_adjuntos
+               WHERE ra_id IN ($in)
+               ORDER BY id ASC";
+    if ($resAdj = $cn->query($sqlAdj)) {
+        while ($a = $resAdj->fetch_assoc()) {
+            $rid = (int)$a['ra_id'];
+            $adjuntos[$rid][] = [
+                'filename'      => $a['filename'],
+                'original_name' => $a['original_name'],
+            ];
+        }
+        $resAdj->free();
+    }
+}
+
+// Botón/Dropdown para ver adjuntos
+
+function _adj_collect_items(array $row, array $adjMap): array
+{
+    $id    = (int)$row['id'];
+    $items = [];
+    $seen  = [];
+
+    if (!empty($row['archivo'])) {
+        $fn = htmlspecialchars($row['archivo']);
+        $items[] = ['href' => "../uploads/reuniones/$fn", 'label' => 'Archivo', 'ext' => pathinfo($fn, PATHINFO_EXTENSION)];
+        $seen[$row['archivo']] = true;
+    }
+    if (!empty($adjMap[$id])) {
+        foreach ($adjMap[$id] as $a) {
+            $fn = $a['filename'];
+            if (isset($seen[$fn])) continue;
+            $label = $a['original_name'] ?: 'Adjunto';
+            $items[] = [
+                'href'  => "../uploads/reuniones/" . htmlspecialchars($fn),
+                'label' => htmlspecialchars($label),
+                'ext'   => pathinfo($fn, PATHINFO_EXTENSION)
+            ];
+        }
+    }
+    return $items;
+}
+
+function renderAdjuntosBtn(array $row, array $adjMap): string
+{
+    $items = _adj_collect_items($row, $adjMap);
+    $n = count($items);
+    if ($n === 0) return '—';
+    if ($n === 1) {
+        return '<a target="_blank" rel="noopener" class="btn btn-sm btn-primary" href="' .
+            $items[0]['href'] . '" download>
+               <i class="bi bi-paperclip me-1"></i>Ver archivo</a>';
+    }
+
+    $html = '<div class="btn-group adj-dropdown">
+        <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-paperclip me-1"></i>Adjuntos
+            <span class="badge bg-primary-subtle text-primary ms-1">' . $n . '</span>
+        </button>
+        <ul class="dropdown-menu adjuntos-menu">';
+    foreach ($items as $i => $it) {
+        $ext = strtoupper($it['ext'] ?: 'FILE');
+        $label = $it['label'];
+        $html .= '<li>
+            <a class="dropdown-item adjuntos-item" href="' . $it['href'] . '" target="_blank" rel="noopener" download
+               title="' . $label . '">
+                <span class="adj-num">' . ($i + 1) . '</span>
+                <span class="adj-filetype">' . $ext . '</span>
+                <span class="adj-label text-truncate">' . $label . '</span>
+                <i class="bi bi-box-arrow-up-right ms-2"></i>
+            </a>
+        </li>';
+    }
+    $html .= '</ul></div>';
+    return $html;
+}
+
+function renderAdjuntosList(array $row, array $adjMap): string
+{
+    $items = _adj_collect_items($row, $adjMap);
+    if (!$items) return '';
+    $out = '<div class="adj-list d-flex flex-column gap-1">';
+    foreach ($items as $i => $it) {
+        $ext = strtoupper($it['ext'] ?: 'FILE');
+        $label = $it['label'];
+        $out .= '<a class="btn btn-outline-primary btn-sm w-100" href="' . $it['href'] . '" target="_blank" rel="noopener" download title="' . $label . '">
+                    <span class="adj-filetype">' . $ext . '</span>
+                    <span class="flex-grow-1 text-truncate">' . $label . '</span>
+                    <i class="bi bi-box-arrow-up-right"></i>
+                 </a>';
+    }
+    $out .= '</div>';
+    return $out;
+}
+
+
 
 function obtenerClaseEstado($estado)
 {
@@ -80,50 +192,320 @@ $cn->close();
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
-        body { background-color: #f4f6f9; }
-        h1, h2 { color: #7c1c2c; }
-        .card { border-left: 5px solid #7c1c2c; }
-        .table th { background-color: #eaeaea; }
-        thead tr.filters th { background: #fafafa; }
-        thead tr.filters .form-control, thead tr.filters .form-select { font-size:.85rem; padding:.15rem .4rem; }
-        thead tr.filters .btn-clear { font-size:.8rem; }
-        .badge-completado { background:#28a745!important; color:#fff; }
-        .badge-en-curso { background:#ffc107!important; color:#000; }
-        .badge-no-iniciada { background:#0d6efd!important; color:#fff; }
-        .badge-bloqueada { background:#dc3545!important; color:#fff; }
-        .badge-otros { background:#6f42c1!important; color:#fff; }
-        .badge-ciudadania { background:#0dcaf0!important; color:#fff; }
-        .badge-penal { background:#ff6b6b!important; color:#fff; }
-        .badge-civil { background:#28d5a0!important; color:#fff; }
-        .badge-familia { background:#ffc107!important; color:#000; }
-        .badge-cyq { background:#adb5bd!important; color:#000; }
-        .fila-fijada { background:#fff8e1; }
-        .fila-fijada .pin-icon { color:#f0ad4e!important; }
-        .badge-prioridad { background:#f0ad4e; color:#000; }
-        .actions-wrap { gap:.5rem; }
-        @media (max-width:576px){
-            h1{font-size:1.35rem} h2{font-size:1.15rem} .badge{font-size:.85rem}
-            .actions-wrap{flex-direction:column}.actions-wrap .btn{width:100%}
-            .table th,.table td{font-size:.95rem}
-            .table-responsive{-webkit-overflow-scrolling:touch}
+        body {
+            background-color: #f4f6f9;
         }
-        @media (max-width:575.98px){
-            .ra-card{border:1px solid #e9ecef;border-left:5px solid #7c1c2c;border-radius:12px;background:#fff;padding:12px 12px 8px;margin-bottom:12px;box-shadow:0 2px 6px rgba(0,0,0,.05)}
-            .ra-title{font-weight:600;margin-bottom:6px}
-            .ra-row{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:.95rem}
-            .ra-row .full{grid-column:1 / -1}
-            .ra-meta{color:#6c757d;font-size:.9rem}
-            .ra-actions{display:flex;gap:8px;margin-top:8px}
-            .badge{font-size:.85rem}
-            .section-title{padding:10px 15px;margin:0 -15px 20px;background:linear-gradient(to right,#fdf0eb,#f9d9d1);border-left:5px solid #7c1c2c;font-weight:bold;box-shadow:0 2px 4px rgba(0,0,0,.05)}
+
+        h1,
+        h2 {
+            color: #7c1c2c;
         }
-        .fila-fijada td{background:#fff3cd!important;border-top:1px solid #ffe08a!important;border-bottom:1px solid #ffe08a!important}
-        .fila-fijada td:first-child{box-shadow:inset 8px 0 0 #f0ad4e}
-        .fila-fijada .pin-icon{color:#d97706!important;font-size:1.15rem}
-        .ra-card.fila-fijada{background:#fff3cd;border-left:8px solid #f0ad4e;box-shadow:0 0 0 2px #ffe08a inset}
-        .ra-card.fila-fijada .pin-icon{color:#d97706!important}
-        .ra-card.fila-fijada .ra-title::before{content:"PRIORIDAD";display:inline-block;margin-right:.4rem;padding:2px 8px;font-size:.75rem;font-weight:700;background:#f0ad4e;color:#000;border-radius:6px}
-        @media (min-width:768px){ .section-title{margin:0 0 20px 0;border-left:5px solid #7c1c2c;border-radius:4px} }
+
+        .card {
+            border-left: 5px solid #7c1c2c;
+        }
+
+        .table th {
+            background-color: #eaeaea;
+        }
+
+        thead tr.filters th {
+            background: #fafafa;
+        }
+
+        thead tr.filters .form-control,
+        thead tr.filters .form-select {
+            font-size: .85rem;
+            padding: .15rem .4rem;
+        }
+
+        thead tr.filters .btn-clear {
+            font-size: .8rem;
+        }
+
+        .badge-completado {
+            background: #28a745 !important;
+            color: #fff;
+        }
+
+        .badge-en-curso {
+            background: #ffc107 !important;
+            color: #000;
+        }
+
+        .badge-no-iniciada {
+            background: #0d6efd !important;
+            color: #fff;
+        }
+
+        .badge-bloqueada {
+            background: #dc3545 !important;
+            color: #fff;
+        }
+
+        .badge-otros {
+            background: #6f42c1 !important;
+            color: #fff;
+        }
+
+        .badge-ciudadania {
+            background: #0dcaf0 !important;
+            color: #fff;
+        }
+
+        .badge-penal {
+            background: #ff6b6b !important;
+            color: #fff;
+        }
+
+        .badge-civil {
+            background: #28d5a0 !important;
+            color: #fff;
+        }
+
+        .badge-familia {
+            background: #ffc107 !important;
+            color: #000;
+        }
+
+        .badge-cyq {
+            background: #adb5bd !important;
+            color: #000;
+        }
+
+        .fila-fijada {
+            background: #fff8e1;
+        }
+
+        .fila-fijada .pin-icon {
+            color: #f0ad4e !important;
+        }
+
+        .badge-prioridad {
+            background: #f0ad4e;
+            color: #000;
+        }
+
+        .actions-wrap {
+            gap: .5rem;
+        }
+
+        @media (max-width:576px) {
+            h1 {
+                font-size: 1.35rem
+            }
+
+            h2 {
+                font-size: 1.15rem
+            }
+
+            .badge {
+                font-size: .85rem
+            }
+
+            .actions-wrap {
+                flex-direction: column
+            }
+
+            .actions-wrap .btn {
+                width: 100%
+            }
+
+            .table th,
+            .table td {
+                font-size: .95rem
+            }
+
+            .table-responsive {
+                -webkit-overflow-scrolling: touch
+            }
+        }
+
+        @media (max-width:575.98px) {
+            .ra-card {
+                border: 1px solid #e9ecef;
+                border-left: 5px solid #7c1c2c;
+                border-radius: 12px;
+                background: #fff;
+                padding: 12px 12px 8px;
+                margin-bottom: 12px;
+                box-shadow: 0 2px 6px rgba(0, 0, 0, .05)
+            }
+
+            .ra-title {
+                font-weight: 600;
+                margin-bottom: 6px
+            }
+
+            .ra-row {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 6px 10px;
+                font-size: .95rem
+            }
+
+            .ra-row .full {
+                grid-column: 1 / -1
+            }
+
+            .ra-meta {
+                color: #6c757d;
+                font-size: .9rem
+            }
+
+            .ra-actions {
+                display: flex;
+                gap: 8px;
+                margin-top: 8px
+            }
+
+            .badge {
+                font-size: .85rem
+            }
+
+            .section-title {
+                padding: 10px 15px;
+                margin: 0 -15px 20px;
+                background: linear-gradient(to right, #fdf0eb, #f9d9d1);
+                border-left: 5px solid #7c1c2c;
+                font-weight: bold;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, .05)
+            }
+        }
+
+        .fila-fijada td {
+            background: #fff3cd !important;
+            border-top: 1px solid #ffe08a !important;
+            border-bottom: 1px solid #ffe08a !important
+        }
+
+        .fila-fijada td:first-child {
+            box-shadow: inset 8px 0 0 #f0ad4e
+        }
+
+        .fila-fijada .pin-icon {
+            color: #d97706 !important;
+            font-size: 1.15rem
+        }
+
+        .ra-card.fila-fijada {
+            background: #fff3cd;
+            border-left: 8px solid #f0ad4e;
+            box-shadow: 0 0 0 2px #ffe08a inset
+        }
+
+        .ra-card.fila-fijada .pin-icon {
+            color: #d97706 !important
+        }
+
+        .ra-card.fila-fijada .ra-title::before {
+            content: "PRIORIDAD";
+            display: inline-block;
+            margin-right: .4rem;
+            padding: 2px 8px;
+            font-size: .75rem;
+            font-weight: 700;
+            background: #f0ad4e;
+            color: #000;
+            border-radius: 6px
+        }
+
+        @media (min-width:768px) {
+            .section-title {
+                margin: 0 0 20px 0;
+                border-left: 5px solid #7c1c2c;
+                border-radius: 4px
+            }
+        }
+
+        /* ===== Adjuntos bonitos ===== */
+        .dropdown-menu.adjuntos-menu {
+            min-width: 360px;
+            padding: 8px
+        }
+
+        .adj-dropdown .dropdown-toggle .badge {
+            font-weight: 600
+        }
+
+        .adjuntos-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: .5rem .6rem;
+            border-radius: .6rem
+        }
+
+        .adjuntos-item:hover {
+            background: var(--bs-light)
+        }
+
+        .adj-num {
+            width: 20px;
+            text-align: right;
+            color: #6c757d;
+            font-size: .85rem
+        }
+
+        .adj-filetype {
+            width: 34px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: .4rem;
+            background: #eef2f7;
+            font-weight: 700;
+            font-size: .75rem;
+            color: #0d6efd
+        }
+
+        .adj-label {
+            flex: 1;
+            max-width: 240px
+        }
+
+        .adj-label.text-truncate {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap
+        }
+
+        /* Lista vertical para mobile */
+        .adj-list a {
+            display: flex;
+            align-items: center;
+            gap: 10px
+        }
+
+        .adj-list .adj-filetype {
+            width: 30px;
+            height: 26px
+        }
+
+        #edit-adj-list .adj-row {
+            border: 1px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 6px 10px;
+            margin-bottom: 6px;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .5rem;
+        }
+
+        #edit-adj-list .adj-row.to-delete {
+            background: #fff1f0;
+            border-color: #f5c2c7;
+        }
+
+        #edit-adj-list .adj-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 60ch;
+        }
     </style>
 </head>
 
@@ -171,12 +553,16 @@ $cn->close();
                             </tr>
                             <tr class="filters">
                                 <th><input type="text" class="form-control form-control-sm" placeholder="Filtrar…"></th>
-                                <th><select class="form-select form-select-sm"><option value="">Todos</option></select></th>
-                                <th><select class="form-select form-select-sm"><option value="">Todos</option></select></th>
+                                <th><select class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                    </select></th>
+                                <th><select class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                    </select></th>
                                 <th></th>
-                                <th></th> <!-- doc -->
-                                <th></th> <!-- fecha inicio -->
-                                <th></th> <!-- fecha fin -->
+                                <th></th>
+                                <th></th>
+                                <th></th>
                                 <th><button type="button" class="btn btn-sm btn-outline-secondary w-100 btn-clear">Limpiar Filtros</button></th>
                             </tr>
                         </thead>
@@ -187,14 +573,9 @@ $cn->close();
                                     <td><span class="badge <?= obtenerClaseEstado($p['estado']) ?>"><?= htmlspecialchars($p['estado']) ?></span></td>
                                     <td><?= $p['organismo'] ? htmlspecialchars($p['organismo']) : '—' ?></td>
                                     <td><?= htmlspecialchars($p['notas']) ?></td>
-                                    <td>
-                                        <?php if (!empty($p['archivo'])): ?>
-                                            <a href="../uploads/reuniones/<?= $p['archivo'] ?>" target="_blank" class="btn btn-sm btn-primary">Ver archivo</a>
-                                        <?php else: ?> — <?php endif; ?>
-                                    </td>
+                                    <td><?= renderAdjuntosBtn($p, $adjuntos) ?></td>
                                     <td><?= fmtDate($p['fecha_inicio']) ?></td>
                                     <td><?= $p['fecha_fin'] ? fmtDate($p['fecha_fin']) : '—' ?></td>
-
                                     <td class="text-nowrap">
                                         <button class="btn btn-sm btn-outline-warning btn-pin"
                                             title="<?= !empty($p['fijado']) ? 'Quitar prioridad' : 'Fijar prioridad' ?>"
@@ -230,11 +611,7 @@ $cn->close();
                                 <div class="full"><span class="badge <?= obtenerClaseEstado($p['estado']) ?>"><?= htmlspecialchars($p['estado']) ?></span></div>
                                 <?php if (!empty($p['organismo'])): ?><div class="full ra-meta"><strong>Organismo:</strong> <?= htmlspecialchars($p['organismo']) ?></div><?php endif; ?>
                                 <?php if (!empty($p['notas'])): ?><div class="full ra-meta"><strong>Notas:</strong> <?= htmlspecialchars($p['notas']) ?></div><?php endif; ?>
-                                <?php if (!empty($p['archivo'])): ?>
-                                    <div class="full">
-                                        <a href="../uploads/reuniones/<?= $p['archivo'] ?>" target="_blank" class="btn btn-sm btn-primary">Ver archivo</a>
-                                    </div>
-                                <?php endif; ?>
+                                <?= renderAdjuntosBtn($p, $adjuntos) ?>
                                 <div><strong>Inicio:</strong> <?= fmtDate($p['fecha_inicio']) ?></div>
                                 <div><strong>Fin:</strong> <?= $p['fecha_fin'] ? fmtDate($p['fecha_fin']) : '—' ?></div>
                             </div>
@@ -283,11 +660,7 @@ $cn->close();
                                     <td><span class="badge <?= obtenerClaseEstado($p['estado']) ?>"><?= htmlspecialchars($p['estado']) ?></span></td>
                                     <td><?= $p['organismo'] ? htmlspecialchars($p['organismo']) : '—' ?></td>
                                     <td><?= htmlspecialchars($p['notas']) ?></td>
-                                    <td>
-                                        <?php if (!empty($p['archivo'])): ?>
-                                            <a href="../uploads/reuniones/<?= $p['archivo'] ?>" target="_blank" class="btn btn-sm btn-primary">Ver archivo</a>
-                                        <?php else: ?> — <?php endif; ?>
-                                    </td>
+                                    <td><?= renderAdjuntosBtn($p, $adjuntos) ?></td>
                                     <td><?= fmtDate($p['fecha_inicio']) ?></td>
                                     <td><?= $p['fecha_fin'] ? fmtDate($p['fecha_fin']) : '—' ?></td>
                                     <td class="text-nowrap">
@@ -336,7 +709,9 @@ $cn->close();
                             <tr class="filters">
                                 <th></th>
                                 <th><input type="text" class="form-control form-control-sm" placeholder="Filtrar…"></th>
-                                <th><select class="form-select form-select-sm"><option value="">Todos</option></select></th>
+                                <th><select class="form-select form-select-sm">
+                                        <option value="">Todos</option>
+                                    </select></th>
                                 <th></th>
                                 <th></th>
                                 <th><button type="button" class="btn btn-sm btn-outline-secondary w-100 btn-clear">Limpiar Filtros</button></th>
@@ -349,11 +724,7 @@ $cn->close();
                                     <td><?= htmlspecialchars($r['tarea']) ?></td>
                                     <td><?= $r['organismo'] ? htmlspecialchars($r['organismo']) : '—' ?></td>
                                     <td><?= htmlspecialchars($r['asistentes']) ?></td>
-                                    <td>
-                                        <?php if (!empty($r['archivo'])): ?>
-                                            <a href="../uploads/reuniones/<?= $r['archivo'] ?>" target="_blank" class="btn btn-sm btn-primary">Ver archivo</a>
-                                        <?php else: ?> — <?php endif; ?>
-                                    </td>
+                                    <td><?= renderAdjuntosBtn($r, $adjuntos) ?></td>
                                     <td class="text-nowrap">
                                         <button class="btn btn-sm btn-outline-warning btn-pin"
                                             title="<?= !empty($r['fijado']) ? 'Quitar prioridad' : 'Fijar prioridad' ?>"
@@ -393,11 +764,7 @@ $cn->close();
                                 <?php if (!empty($r['asistentes'])): ?>
                                     <div class="full ra-meta"><strong>Asistentes:</strong> <?= htmlspecialchars($r['asistentes']) ?></div>
                                 <?php endif; ?>
-                                <?php if (!empty($r['archivo'])): ?>
-                                    <div class="full">
-                                        <a href="../uploads/reuniones/<?= $r['archivo'] ?>" target="_blank" class="btn btn-sm btn-primary">Ver archivo</a>
-                                    </div>
-                                <?php endif; ?>
+                                <?= renderAdjuntosBtn($r, $adjuntos) ?>
                             </div>
                             <div class="ra-actions">
                                 <button class="btn btn-sm btn-outline-warning btn-pin"
@@ -442,11 +809,7 @@ $cn->close();
                                     <td><?= htmlspecialchars($r['tarea']) ?></td>
                                     <td><?= $r['organismo'] ? htmlspecialchars($r['organismo']) : '—' ?></td>
                                     <td><?= htmlspecialchars($r['asistentes']) ?></td>
-                                    <td>
-                                        <?php if (!empty($r['archivo'])): ?>
-                                            <a href="../uploads/reuniones/<?= $r['archivo'] ?>" target="_blank" class="btn btn-sm btn-primary">Ver archivo</a>
-                                        <?php else: ?> — <?php endif; ?>
-                                    </td>
+                                    <td><?= renderAdjuntosBtn($r, $adjuntos) ?></td>
                                     <td class="text-nowrap">
                                         <button class="btn btn-sm btn-outline-success btn-finalizar"
                                             title="Reabrir"
@@ -520,19 +883,35 @@ $cn->close();
                                     <input id="edit-asistentes" name="asistentes" class="form-control">
                                 </div>
 
-                                <!-- Archivo (para reunión y actividad) -->
-                                <div id="grp-archivo" class="col-12">
-                                    <label class="form-label">Documento adjunto</label>
-                                    <div class="mb-2" id="edit-archivo-actual-wrap" style="display:none">
-                                        <small>Archivo actual: <a id="edit-archivo-link" href="#" target="_blank" rel="noopener">ver archivo</a></small>
+                                <!-- === Adjuntos (multi) === -->
+                                <!-- Documentos adjuntos (para reunión y actividad) -->
+                                <div class="col-12">
+                                    <label class="form-label">Documentos adjuntos</label>
+
+                                    <!-- LISTA de adjuntos existentes -->
+                                    <div id="edit-adjuntos-actuales"
+                                        class="list-group list-group-flush mb-2 border rounded"
+                                        style="max-height:180px;overflow:auto">
+                                        <!-- se completa por JS con loadAdjuntosEdit(...) -->
                                     </div>
-                                    <input id="edit-archivo" name="archivo" type="file" class="form-control"
+
+                                    <!-- hidden donde el JS va agregando adjuntos a eliminar -->
+                                    <div id="edit-adjuntos-del"></div>
+
+                                    <!-- flag para borrar el “archivo” legacy (columna vieja) si se marca -->
+                                    <input type="hidden" id="del-archivo-legacy" name="del_legacy" value="0">
+
+                                    <!-- input para subir NUEVOS adjuntos -->
+                                    <input id="edit-archivos" name="archivos[]" type="file" class="form-control"
+                                        multiple
                                         accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif">
-                                    <input type="hidden" id="edit-archivo-actual" name="archivo_actual" value="">
+
                                     <small class="text-muted d-block mt-1">
-                                        Si seleccionás un archivo nuevo, reemplaza al anterior.
+                                        Podés cargar varios archivos. Si marcás alguno para borrar, se eliminará al guardar.
                                     </small>
                                 </div>
+
+
 
                             </div>
                         </div>
@@ -567,10 +946,20 @@ $cn->close();
 
             const norm = s => (s || '').toString().trim().toLowerCase();
 
-            const archivoActualWrap = document.getElementById('edit-archivo-actual-wrap');
-            const archivoLink = document.getElementById('edit-archivo-link');
-            const inpArchivo = document.getElementById('edit-archivo');
-            const hidArchivoActual = document.getElementById('edit-archivo-actual');
+            // Reemplazá estas líneas
+            // const archivoActualWrap = document.getElementById('edit-archivo-actual-wrap');
+            // const archivoLink = document.getElementById('edit-archivo-link');
+            // const inpArchivo = document.getElementById('edit-archivo');
+            // const hidArchivoActual = document.getElementById('edit-archivo-actual');
+
+            // Por estas (toleran ambos esquemas y no rompen si falta algo)
+            const archivoActualWrap = document.getElementById('edit-archivo-actual-wrap') || null;
+            const archivoLink = document.getElementById('edit-archivo-link') || null;
+            // usa el nuevo múltiple si existe, si no, el viejo
+            const inpArchivo = document.getElementById('edit-archivos') ||
+                document.getElementById('edit-archivo') || null;
+            const hidArchivoActual = document.getElementById('edit-archivo-actual') || null;
+
 
             function fillSelect(select, values, current, addOtro = false) {
                 if (!select) return;
@@ -590,13 +979,14 @@ $cn->close();
                 if (current && !values.includes(current)) {
                     const opt = document.createElement('option');
                     opt.value = current;
-                    opt.textContent = `${current} (existente)`;
+                    opt.textContent = current + ' (existente)';
                     select.appendChild(opt);
                 }
                 if (current) select.value = current;
             }
 
             function fillSelectOptions(select, values) {
+                if (!select) return;
                 const curr = select.value;
                 values.forEach(v => {
                     const opt = document.createElement('option');
@@ -618,7 +1008,7 @@ $cn->close();
                 return map[s] || null;
             }
 
-            // --- Modal edición ---
+            // ========= Modal edición: UI =========
             function applyTipoUI(tipo, estadoActual = '', organismoActual = '') {
                 const grpEstado = document.getElementById('grp-estado');
                 const selEstado = document.getElementById('edit-estado');
@@ -651,19 +1041,129 @@ $cn->close();
             });
             document.getElementById('edit-tipo')?.addEventListener('change', (e) => applyTipoUI(e.target.value, '', ''));
 
+            // ========= Adjuntos (helpers) =========
+            const getAdjList = () => document.getElementById('edit-adjuntos-actuales');
+            const getAdjDelBox = () => document.getElementById('edit-adjuntos-del');
+            const getDelLegacy = () => document.getElementById('del-archivo-legacy');
+
+            function escapeHtml(s) {
+                return (s || '').toString().replace(/[&<>"']/g, m => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                } [m]));
+            }
+
+            function addAdjuntoItem({
+                id,
+                href,
+                label,
+                tipo
+            }) {
+                const list = getAdjList();
+                if (!list) return;
+
+                const li = document.createElement('div');
+                li.className = 'list-group-item d-flex align-items-center justify-content-between gap-2';
+                li.dataset.tipo = tipo;
+                if (id) li.dataset.id = String(id);
+
+                const left = document.createElement('div');
+                left.className = 'text-truncate';
+                left.innerHTML = `<i class="bi bi-paperclip me-1"></i>
+      <a class="text-decoration-none" target="_blank" href="${href}" title="${escapeHtml(label)}">${escapeHtml(label)}</a>`;
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn btn-sm btn-outline-danger';
+                btn.innerHTML = '<i class="bi bi-trash"></i> Eliminar';
+
+                btn.addEventListener('click', () => {
+                    const removing = !li.classList.contains('list-group-item-danger');
+                    li.classList.toggle('list-group-item-danger', removing);
+
+                    if (tipo === 'legacy') {
+                        const delLegacy = getDelLegacy();
+                        if (delLegacy) delLegacy.value = removing ? '1' : '0';
+                        btn.className = removing ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-outline-danger';
+                        btn.innerHTML = removing ? '<i class="bi bi-trash"></i> A eliminar' : '<i class="bi bi-trash"></i> Eliminar';
+                    } else {
+                        const box = getAdjDelBox();
+                        const theId = li.dataset.id;
+                        if (!box || !theId) return;
+
+                        const existing = box.querySelector(`input[value="${theId}"]`);
+                        if (removing) {
+                            if (!existing) {
+                                const h = document.createElement('input');
+                                h.type = 'hidden';
+                                h.name = 'adj_del[]';
+                                h.value = theId;
+                                box.appendChild(h);
+                            }
+                            btn.className = 'btn btn-sm btn-danger';
+                            btn.innerHTML = '<i class="bi bi-trash"></i> A eliminar';
+                        } else {
+                            existing?.remove();
+                            btn.className = 'btn btn-sm btn-outline-danger';
+                            btn.innerHTML = '<i class="bi bi-trash"></i> Eliminar';
+                        }
+                    }
+                });
+
+                li.appendChild(left);
+                li.appendChild(btn);
+                list.appendChild(li);
+            }
+
+            async function loadAdjuntosEdit(raId) {
+                const list = getAdjList();
+                const box = getAdjDelBox();
+                const delL = getDelLegacy();
+                if (list) list.innerHTML = '';
+                if (box) box.innerHTML = '';
+                if (delL) delL.value = '0';
+
+                const url = `../api/api-reuniones.php?accion=adjuntos&id=${encodeURIComponent(raId)}`;
+                const res = await fetch(url);
+                const data = await res.json();
+
+                if (data?.legacy?.filename) {
+                    addAdjuntoItem({
+                        id: null,
+                        href: `../uploads/reuniones/${encodeURIComponent(data.legacy.filename)}`,
+                        label: data.legacy.original_name || data.legacy.filename,
+                        tipo: 'legacy'
+                    });
+                }
+                (data?.items || []).forEach(a => {
+                    addAdjuntoItem({
+                        id: a.id,
+                        href: `../uploads/reuniones/${encodeURIComponent(a.filename)}`,
+                        label: a.original_name || a.filename,
+                        tipo: 'multi'
+                    });
+                });
+            }
+
+            // ========= Abrir modal de edición =========
             document.querySelectorAll(".btn-editar").forEach(btn => {
-                btn.addEventListener("click", () => {
-                    const data = JSON.parse(btn.dataset.reg);
-                    document.getElementById('edit-id').value = data.id;
-                    document.getElementById('edit-tipo').value = data.tipo;
-                    document.getElementById('edit-tarea').value = data.tarea;
+                btn.addEventListener("click", async () => {
+                    const data = JSON.parse(btn.dataset.reg || '{}');
+
+                    // Campos base
+                    document.getElementById('edit-id').value = data.id ?? '';
+                    document.getElementById('edit-tipo').value = data.tipo ?? '';
+                    document.getElementById('edit-tarea').value = data.tarea ?? '';
                     document.getElementById('edit-notas').value = data.notas || '';
                     document.getElementById('edit-fecha-inicio').value = data.fecha_inicio || '';
                     document.getElementById('edit-fecha-fin').value = data.fecha_fin || '';
                     document.getElementById('edit-asistentes').value = data.asistentes || '';
 
+                    // Selects según tipo
                     applyTipoUI(data.tipo, (data.estado || ''), (data.organismo || ''));
-
                     if (data.tipo !== 'reunion') {
                         const sel = document.getElementById('edit-estado');
                         const canon = normalizarEstado(data.estado) || 'No iniciada';
@@ -682,39 +1182,52 @@ $cn->close();
                         if (sel && actual && ![...sel.options].some(o => o.value === actual)) {
                             const opt = document.createElement('option');
                             opt.value = actual;
-                            opt.textContent = `${actual} (existente)`;
+                            opt.textContent = actual + ' (existente)';
                             sel.appendChild(opt);
                             sel.value = actual;
                         }
                     }
 
-                    // Archivo actual (si hay)
+                    // Archivo (legacy) mostrado como "ver archivo"
                     const nombreArchivo = (data.archivo || '').trim();
                     if (nombreArchivo) {
-                        archivoActualWrap.style.display = '';
-                        archivoLink.href = `../uploads/reuniones/${nombreArchivo}`;
-                        hidArchivoActual.value = nombreArchivo;
+                        if (archivoActualWrap) archivoActualWrap.style.display = '';
+                        if (archivoLink) archivoLink.href = '../uploads/reuniones/' + nombreArchivo;
+                        if (hidArchivoActual) hidArchivoActual.value = nombreArchivo;
                     } else {
-                        archivoActualWrap.style.display = 'none';
-                        archivoLink.removeAttribute('href');
-                        hidArchivoActual.value = '';
+                        if (archivoActualWrap) archivoActualWrap.style.display = 'none';
+                        if (archivoLink) archivoLink.removeAttribute('href');
+                        if (hidArchivoActual) hidArchivoActual.value = '';
                     }
-                    if (inpArchivo) inpArchivo.value = '';
+                    if (inpArchivo) inpArchivo.value = ''; // limpiar file simple
+
+                    // Adjuntos (legacy + múltiples)
+                    try {
+                        await loadAdjuntosEdit(data.id);
+                    } catch (_) {
+                        const list = getAdjList();
+                        if (list) {
+                            list.innerHTML = '<div class="list-group-item text-danger">No se pudieron cargar los adjuntos</div>';
+                        }
+                    }
 
                     new bootstrap.Modal(document.getElementById('modalEditar')).show();
                 });
             });
 
-            document.getElementById("formEditar")?.addEventListener("submit", function(e) {
+            // ========= Guardar edición =========
+            document.getElementById("formEditar")?.addEventListener("submit", async function(e) {
                 e.preventDefault();
                 const form = e.target;
                 const fd = new FormData(form);
                 const tipo = form.querySelector('#edit-tipo')?.value;
 
-                // Resolver organismo / estado según tipo
+                // Resolver organismo / estado
                 const selOrg = form.querySelector('#edit-organismo');
                 const inpOrg = form.querySelector('#edit-organismo-otro');
-                let valorOrg = (selOrg?.value === '__OTRO__') ? (inpOrg?.value || '').trim() : (selOrg?.value || '').trim();
+                const valorOrg = (selOrg?.value === '__OTRO__') ?
+                    (inpOrg?.value || '').trim() :
+                    (selOrg?.value || '').trim();
                 fd.set('organismo', valorOrg);
                 if (tipo === 'reunion') {
                     if (valorOrg) fd.set('estado', valorOrg);
@@ -724,15 +1237,29 @@ $cn->close();
                     fd.set('estado', canon);
                 }
 
-                fetch('../api/api-reuniones.php', {
+                // Si por estructura los hidden adj_del[] no quedan dentro del <form>, los agrego
+                const box = getAdjDelBox();
+                if (box) {
+                    box.querySelectorAll('input[name="adj_del[]"]').forEach(h => fd.append('adj_del[]', h.value));
+                }
+                const delLegacy = getDelLegacy();
+                if (delLegacy) fd.set('del_archivo_legacy', delLegacy.value || '0');
+
+                try {
+                    const res = await fetch('../api/api-reuniones.php', {
                         method: 'POST',
                         body: fd
-                    })
-                    .then(res => res.json())
-                    .then(data => Swal.fire('Actualizado', (data && data.mensaje) || 'OK', 'success').then(() => location.reload()))
-                    .catch(() => Swal.fire('Error', 'No se pudo actualizar', 'error'));
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data?.error || 'Error');
+                    await Swal.fire('Actualizado', (data && data.mensaje) || 'OK', 'success');
+                    location.reload();
+                } catch (err) {
+                    Swal.fire('Error', err.message || 'No se pudo actualizar', 'error');
+                }
             });
 
+            // ========= Eliminar =========
             document.querySelectorAll(".btn-eliminar").forEach(btn => {
                 btn.addEventListener("click", () => {
                     const id = btn.dataset.id;
@@ -747,7 +1274,9 @@ $cn->close();
                         if (r.isConfirmed) {
                             fetch('../api/api-reuniones.php', {
                                     method: 'DELETE',
-                                    body: new URLSearchParams({ id })
+                                    body: new URLSearchParams({
+                                        id
+                                    })
                                 })
                                 .then(res => res.json())
                                 .then(data => Swal.fire('Eliminado', (data && data.mensaje) || 'OK', 'success').then(() => location.reload()))
@@ -757,6 +1286,7 @@ $cn->close();
                 });
             });
 
+            // ========= Pin / Finalizar =========
             document.querySelectorAll('.btn-pin').forEach(btn => {
                 btn.addEventListener('click', async () => {
                     const id = btn.dataset.id;
@@ -765,7 +1295,11 @@ $cn->close();
                     try {
                         const res = await fetch('../api/api-reuniones.php', {
                             method: 'POST',
-                            body: new URLSearchParams({ accion: 'pin', id, fijado: String(nuevo) })
+                            body: new URLSearchParams({
+                                accion: 'pin',
+                                id,
+                                fijado: String(nuevo)
+                            })
                         });
                         const data = await res.json();
                         if (!res.ok) throw new Error(data.error || 'Error');
@@ -784,8 +1318,14 @@ $cn->close();
                     try {
                         const res = await fetch('../api/api-reuniones.php', {
                             method: 'POST',
-                            headers: { 'Accept': 'application/json' },
-                            body: new URLSearchParams({ accion: 'finalizar', id, finalizado: String(nuevo) })
+                            headers: {
+                                'Accept': 'application/json'
+                            },
+                            body: new URLSearchParams({
+                                accion: 'finalizar',
+                                id,
+                                finalizado: String(nuevo)
+                            })
                         });
                         const data = await res.json();
                         if (!res.ok) throw new Error(data.error || 'Error');
@@ -796,15 +1336,16 @@ $cn->close();
                 });
             });
 
-            /* ====== FILTROS SIMPLIFICADOS ====== */
+            // ========= Filtros =========
             function attachFiltersActividades() {
                 const table = document.getElementById('tbl-actividades');
                 if (!table) return;
                 const filters = table.querySelector('thead tr.filters');
-                const inpTarea = filters.children[0].querySelector('input');
-                const selEstado = filters.children[1].querySelector('select');
-                const selOrg = filters.children[2].querySelector('select');
-                const btnClear = filters.querySelector('.btn-clear');
+                const inpTarea = filters?.children?.[0]?.querySelector('input');
+                const selEstado = filters?.children?.[1]?.querySelector('select');
+                const selOrg = filters?.children?.[2]?.querySelector('select');
+                const btnClear = filters?.querySelector('.btn-clear');
+                if (!inpTarea || !selEstado || !selOrg || !btnClear) return;
 
                 fillSelectOptions(selEstado, ESTADOS_ACT);
                 fillSelectOptions(selOrg, ORGANISMOS);
@@ -850,9 +1391,10 @@ $cn->close();
                 const table = document.getElementById('tbl-reuniones');
                 if (!table) return;
                 const filters = table.querySelector('thead tr.filters');
-                const inpTarea = filters.children[1].querySelector('input');
-                const selOrg = filters.children[2].querySelector('select');
-                const btnClear = filters.querySelector('.btn-clear');
+                const inpTarea = filters?.children?.[1]?.querySelector('input');
+                const selOrg = filters?.children?.[2]?.querySelector('select');
+                const btnClear = filters?.querySelector('.btn-clear');
+                if (!inpTarea || !selOrg || !btnClear) return;
 
                 fillSelectOptions(selOrg, ORGANISMOS);
 
@@ -863,11 +1405,9 @@ $cn->close();
                     table.querySelectorAll('tbody tr').forEach(tr => {
                         const cTarea = norm(tr.children[1].textContent);
                         const cOrg = norm(tr.children[2].textContent);
-
                         let ok = true;
                         if (t && !cTarea.includes(t)) ok = false;
                         if (o && cOrg !== o) ok = false;
-
                         tr.style.display = ok ? '' : 'none';
                     });
                 }
@@ -886,9 +1426,9 @@ $cn->close();
             attachFiltersReuniones();
         });
 
-        /* ===============================
-         *  Enviar a Agenda
-         * =============================== */
+        // ===============================
+        //  Enviar a Agenda
+        // ===============================
         function prettyTipo(t) {
             const v = String(t || '').toLowerCase();
             if (v === 'proyecto') return 'ACTIVIDAD';
@@ -898,25 +1438,33 @@ $cn->close();
 
         function buildDescripcionAgenda(data) {
             const partes = [];
-            if (data.tipo) partes.push(`Tipo: ${prettyTipo(data.tipo)}`);
+            if (data.tipo) partes.push('Tipo: ' + prettyTipo(data.tipo));
             if (data.organismo) {
-                partes.push(`Organismo/Proyecto: ${data.organismo}`);
+                partes.push('Organismo/Proyecto: ' + data.organismo);
             } else if (data.estado && data.tipo === 'reunion') {
-                partes.push(`Organismo/Proyecto: ${data.estado}`);
+                partes.push('Organismo/Proyecto: ' + data.estado);
             }
-            if (data.asistentes) partes.push(`Asistentes: ${data.asistentes}`);
-            if (data.notas) partes.push(`Notas: ${data.notas}`);
+            if (data.asistentes) partes.push('Asistentes: ' + data.asistentes);
+            if (data.notas) partes.push('Notas: ' + data.notas);
             return partes.join('\n');
         }
 
-        async function crearEventoAgenda({ titulo, descripcion, fecha, categoria }) {
+        async function crearEventoAgenda({
+            titulo,
+            descripcion,
+            fecha,
+            categoria
+        }) {
             const fd = new FormData();
             fd.append('titulo', titulo);
             fd.append('descripcion', descripcion || '');
             fd.append('fecha', fecha); // YYYY-MM-DD
             fd.append('categoria', categoria || 'general');
 
-            const res = await fetch('../api/api-agregar-evento.php', { method: 'POST', body: fd });
+            const res = await fetch('../api/api-agregar-evento.php', {
+                method: 'POST',
+                body: fd
+            });
             const data = await res.json();
             if (!res.ok || !data || data.success !== true) {
                 throw new Error((data && data.error) || 'Error creando evento');
@@ -943,7 +1491,12 @@ $cn->close();
                     if (!pick.isConfirmed || !pick.value) return;
 
                     const fecha = pick.value; // YYYY-MM-DD
-                    await crearEventoAgenda({ titulo, descripcion, fecha, categoria });
+                    await crearEventoAgenda({
+                        titulo,
+                        descripcion,
+                        fecha,
+                        categoria
+                    });
 
                     const go = await Swal.fire({
                         icon: 'success',
@@ -960,6 +1513,7 @@ $cn->close();
             });
         });
     </script>
+
 </body>
 
 </html>
