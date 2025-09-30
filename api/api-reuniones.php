@@ -21,7 +21,13 @@ if (!is_dir($uploadReu)) {
     @mkdir($uploadReu, 0777, true);
 }
 
-// ==== Helpers ====
+/* =========================================================
+ * Helpers
+ * ======================================================= */
+
+// listado global de archivos “omitidos” (errores de $_FILES)
+$UPLOAD_SKIPPED = [];
+
 function to_mysql_date_or_null($s): ?string {
     if ($s === null) return null;
     $s = trim((string)$s);
@@ -32,19 +38,45 @@ function to_mysql_date_or_null($s): ?string {
     return $s; // ya yyyy-mm-dd
 }
 
+// normaliza acentos y limpia nombre de archivo
 function safe_filename($name) {
+    $name = (string)$name;
+    // minúsculas
+    $name = strtolower($name);
+    // reemplazo de tildes/ñ/umlauts
+    $name = strtr($name, [
+        'á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ñ'=>'n',
+        'ä'=>'a','ë'=>'e','ï'=>'i','ö'=>'o','ü'=>'u'
+    ]);
+    // solo letras, números, guion, underscore, punto
     $name = preg_replace('/[^\w\-.]+/u', '_', $name);
     return $name ?: ('archivo_' . uniqid());
 }
 
+// mensajes legibles para errores de upload
+function upload_error_msg(int $code): string {
+    return match ($code) {
+        UPLOAD_ERR_INI_SIZE => 'El archivo excede upload_max_filesize del servidor',
+        UPLOAD_ERR_FORM_SIZE => 'El archivo excede el límite del formulario',
+        UPLOAD_ERR_PARTIAL => 'El archivo se subió parcialmente',
+        UPLOAD_ERR_NO_FILE => 'No se subió ningún archivo',
+        UPLOAD_ERR_NO_TMP_DIR => 'Falta carpeta temporal en el servidor',
+        UPLOAD_ERR_CANT_WRITE => 'No se pudo escribir el archivo en disco',
+        UPLOAD_ERR_EXTENSION => 'Una extensión de PHP detuvo la subida',
+        default => 'Error desconocido en la subida'
+    };
+}
+
 /**
  * Normaliza archivos recibidos y devuelve un array plano con los que estén OK.
+ * También llena $UPLOAD_SKIPPED con los omitidos (nombre + código + mensaje).
  * Soporta:
  *  - adjuntos[]  (plural recomendado)
  *  - archivos[]  (por compatibilidad)
  *  - archivo     (legacy)
  */
 function collectIncomingFiles(): array {
+    global $UPLOAD_SKIPPED;
     $all = [];
 
     $pluralKeys = ['adjuntos', 'archivos'];
@@ -52,13 +84,21 @@ function collectIncomingFiles(): array {
         if (!empty($_FILES[$key]) && is_array($_FILES[$key]['name'])) {
             $N = count($_FILES[$key]['name']);
             for ($i = 0; $i < $N; $i++) {
-                if (($_FILES[$key]['error'][$i] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+                $err = $_FILES[$key]['error'][$i] ?? UPLOAD_ERR_NO_FILE;
+                $name = $_FILES[$key]['name'][$i] ?? 'archivo';
+                if ($err === UPLOAD_ERR_OK) {
                     $all[] = [
-                        'name'     => $_FILES[$key]['name'][$i],
+                        'name'     => $name,
                         'type'     => $_FILES[$key]['type'][$i] ?? null,
                         'tmp_name' => $_FILES[$key]['tmp_name'][$i],
-                        'error'    => $_FILES[$key]['error'][$i],
+                        'error'    => $err,
                         'size'     => $_FILES[$key]['size'][$i] ?? null,
+                    ];
+                } else {
+                    $UPLOAD_SKIPPED[] = [
+                        'name' => $name,
+                        'error' => $err,
+                        'message' => upload_error_msg((int)$err)
                     ];
                 }
             }
@@ -66,8 +106,18 @@ function collectIncomingFiles(): array {
     }
 
     // archivo (simple / legacy)
-    if (!empty($_FILES['archivo']) && ($_FILES['archivo']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
-        $all[] = $_FILES['archivo'];
+    if (isset($_FILES['archivo'])) {
+        $err = $_FILES['archivo']['error'] ?? UPLOAD_ERR_NO_FILE;
+        $name = $_FILES['archivo']['name'] ?? 'archivo';
+        if ($err === UPLOAD_ERR_OK) {
+            $all[] = $_FILES['archivo'];
+        } elseif ($err !== UPLOAD_ERR_NO_FILE) {
+            $UPLOAD_SKIPPED[] = [
+                'name' => $name,
+                'error' => $err,
+                'message' => upload_error_msg((int)$err)
+            ];
+        }
     }
 
     return $all;
@@ -79,12 +129,15 @@ function moveUpload(array $f, string $destDir): array {
     $ext  = pathinfo($orig, PATHINFO_EXTENSION);
     $base = safe_filename(pathinfo($orig, PATHINFO_FILENAME));
 
-    // nombre con sufijo _ra_<hash> para dedupe del front
+    // nombre con sufijo _ra_<hash> (coincide con lógica del front para dedupe)
     $hash = substr(sha1($orig . microtime(true) . random_int(0, 999999)), 0, 12);
     $final = $base . '_ra_' . $hash . ($ext ? ".{$ext}" : '');
 
     $dest = rtrim($destDir, '/\\') . '/' . $final;
 
+    if (!is_uploaded_file($f['tmp_name'] ?? '')) {
+        throw new RuntimeException('Archivo inválido (no proviene de upload)');
+    }
     if (!move_uploaded_file($f['tmp_name'], $dest)) {
         throw new RuntimeException('Error al guardar el archivo');
     }
@@ -185,6 +238,8 @@ if ($method === 'POST' && ($_POST['accion'] ?? '') === 'finalizar') {
  * POST: alta o edición (con adjuntos múltiples)
  * ======================================================= */
 if ($method === 'POST') {
+    global $UPLOAD_SKIPPED;
+
     $id           = $_POST['id']           ?? null;
     $tipo         = $_POST['tipo']         ?? '';
     $tarea        = $_POST['tarea']        ?? '';
@@ -308,7 +363,8 @@ if ($method === 'POST') {
             'mensaje' => 'Registro actualizado',
             'adjuntos_agregados' => count($incoming),
             'adjuntos_eliminados' => count($adj_del),
-            'legacy_eliminado' => (bool)$del_archivo_legacy
+            'legacy_eliminado' => (bool)$del_archivo_legacy,
+            'omitidos' => $UPLOAD_SKIPPED,  // <<-- avisamos los que no se subieron
         ]);
         exit;
     }
@@ -372,7 +428,8 @@ if ($method === 'POST') {
     echo json_encode([
         'mensaje'  => 'Reunión/Actividad cargada correctamente',
         'id'       => $newId,
-        'adjuntos' => count($moved)
+        'adjuntos' => count($moved),
+        'omitidos' => $UPLOAD_SKIPPED,  // <<-- avisamos los omitidos (p.ej., por tamaño)
     ]);
     exit;
 }
@@ -442,3 +499,4 @@ if ($method === 'DELETE') {
 // Otro método
 http_response_code(405);
 echo json_encode(['error' => 'Método no permitido']);
+
