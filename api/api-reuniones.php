@@ -78,7 +78,11 @@ function moveUpload(array $f, string $destDir): array {
     $orig = $f['name'] ?? 'archivo';
     $ext  = pathinfo($orig, PATHINFO_EXTENSION);
     $base = safe_filename(pathinfo($orig, PATHINFO_FILENAME));
-    $final = $base . '_' . uniqid('ra_') . ($ext ? ".{$ext}" : '');
+
+    // nombre con sufijo _ra_<hash> para dedupe del front
+    $hash = substr(sha1($orig . microtime(true) . random_int(0, 999999)), 0, 12);
+    $final = $base . '_ra_' . $hash . ($ext ? ".{$ext}" : '');
+
     $dest = rtrim($destDir, '/\\') . '/' . $final;
 
     if (!move_uploaded_file($f['tmp_name'], $dest)) {
@@ -277,8 +281,7 @@ if ($method === 'POST') {
             }
         }
 
-        // 4) Subir y registrar NUEVOS adjuntos (si llegaron)
-        $primerArchivoNuevo = null;
+        // 4) Subir y registrar NUEVOS adjuntos (si llegaron) — SOLO multi
         if (!empty($incoming)) {
             $insertAdj = $cn->prepare(
                 "INSERT INTO reun_activ_adjuntos (ra_id, filename, original_name, mime, size)
@@ -287,7 +290,6 @@ if ($method === 'POST') {
             foreach ($incoming as $f) {
                 try {
                     $meta = moveUpload($f, $uploadReu);
-                    if ($primerArchivoNuevo === null) $primerArchivoNuevo = $meta['filename'];
                     $s = (int)($meta['size'] ?? 0);
                     $m = (string)($meta['mime'] ?? '');
                     $o = (string)$meta['original_name'];
@@ -301,16 +303,7 @@ if ($method === 'POST') {
             $insertAdj->close();
         }
 
-        // 5) Si la columna 'archivo' está vacía y subimos alguno, la completamos
-        if ($primerArchivoNuevo !== null) {
-            $upd = $cn->prepare("UPDATE reuniones_actividades
-                                   SET archivo = CASE WHEN (archivo IS NULL OR archivo='') THEN ? ELSE archivo END
-                                 WHERE id=?");
-            $upd->bind_param('si', $primerArchivoNuevo, $id);
-            $upd->execute();
-            $upd->close();
-        }
-
+        // (IMPORTANTE) No tocar columna 'archivo' aquí.
         echo json_encode([
             'mensaje' => 'Registro actualizado',
             'adjuntos_agregados' => count($incoming),
@@ -321,7 +314,7 @@ if ($method === 'POST') {
     }
 
     // ========= ALTA =========
-    // Movemos todos primero
+    // Movemos todos primero a multi
     $moved = [];
     foreach ($incoming as $f) {
         try {
@@ -330,7 +323,9 @@ if ($method === 'POST') {
             // ignorar fallos individuales
         }
     }
-    $filenamePrimero = !empty($moved) ? $moved[0]['filename'] : null;
+
+    // En alta NO completamos 'archivo' legacy (queda NULL)
+    $archivoLegacyInicial = null;
 
     $sql = "INSERT INTO reuniones_actividades
               (tipo, tarea, estado, organismo, notas, fecha_inicio, fecha_fin, asistentes, archivo)
@@ -346,7 +341,7 @@ if ($method === 'POST') {
         $fecha_inicio,
         $fecha_fin,
         $asistentes,
-        $filenamePrimero
+        $archivoLegacyInicial
     );
 
     if (!$stmt->execute()) {

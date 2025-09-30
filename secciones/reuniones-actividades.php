@@ -68,31 +68,61 @@ if (!empty($idsAll)) {
     }
 }
 
-// Botón/Dropdown para ver adjuntos
+function _norm_for_cmp($s) {
+    $s = strtolower((string)$s);
+    // quitamos extensión
+    $s = preg_replace('/\.[a-z0-9]{1,8}$/i', '', $s);
+    // quitamos sufijos tipo _ra_<hash>/_ra_<id>
+    $s = preg_replace('/[_\-\.]ra[_\-\.][a-z0-9]{6,}$/i', '', $s);
+    // quitamos espacios/guiones/underscores/puntos
+    $s = preg_replace('/[\s_\-\.]+/','', $s);
+    // normalizamos tildes simple (opcional)
+    $s = strtr($s, ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ñ'=>'n']);
+    return $s;
+}
 
+/**
+ * Devuelve la lista FINAL sin duplicados entre:
+ *  - legacy: $row['archivo']
+ *  - multi:  $adjMap[$id] = [{filename, original_name}]
+ */
 function _adj_collect_items(array $row, array $adjMap): array
 {
-    $id    = (int)$row['id'];
+    $id = (int)$row['id'];
     $items = [];
-    $seen  = [];
+    $seenKeys = []; // claves normalizadas p/evitar duplicados
 
-    if (!empty($row['archivo'])) {
-        $fn = htmlspecialchars($row['archivo']);
-        $items[] = ['href' => "../uploads/reuniones/$fn", 'label' => 'Archivo', 'ext' => pathinfo($fn, PATHINFO_EXTENSION)];
-        $seen[$row['archivo']] = true;
-    }
+    // 1) Cargar MULTI primero (tiene prioridad sobre legacy)
     if (!empty($adjMap[$id])) {
         foreach ($adjMap[$id] as $a) {
-            $fn = $a['filename'];
-            if (isset($seen[$fn])) continue;
-            $label = $a['original_name'] ?: 'Adjunto';
+            $fn   = (string)$a['filename'];        // ej: "Borrador_-_4.4._..._ra_a1b2c3.docx"
+            $orig = (string)($a['original_name'] ?? '');
+            $key1 = _norm_for_cmp($orig ?: $fn);
+            if (isset($seenKeys[$key1])) continue;
+            $seenKeys[$key1] = true;
+
             $items[] = [
                 'href'  => "../uploads/reuniones/" . htmlspecialchars($fn),
-                'label' => htmlspecialchars($label),
+                'label' => htmlspecialchars($orig ?: $fn),
                 'ext'   => pathinfo($fn, PATHINFO_EXTENSION)
             ];
         }
     }
+
+    // 2) Agregar LEGACY sólo si no colisiona con algo ya visto
+    if (!empty($row['archivo'])) {
+        $lfn   = (string)$row['archivo'];       // puede ser nombre viejo sin sufijo
+        $keyL  = _norm_for_cmp($lfn);
+        if (!isset($seenKeys[$keyL])) {
+            $seenKeys[$keyL] = true;
+            $items[] = [
+                'href'  => "../uploads/reuniones/" . htmlspecialchars($lfn),
+                'label' => 'Archivo', // o $lfn si preferís
+                'ext'   => pathinfo($lfn, PATHINFO_EXTENSION)
+            ];
+        }
+    }
+
     return $items;
 }
 
