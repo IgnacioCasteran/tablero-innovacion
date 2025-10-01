@@ -1,9 +1,8 @@
 <?php
-session_start();
-if (!isset($_SESSION['usuario'])) {
-  header("Location: ../login/login.html");
-  exit();
-}
+// secciones/agenda.php
+require_once __DIR__ . '/../auth.php';
+require_login();          // exige sesión
+enforce_route_access();   // aplica restricciones por rol (coord solo Informes, STJ solo lectura)
 ?>
 
 <!DOCTYPE html>
@@ -38,7 +37,7 @@ if (!isset($_SESSION['usuario'])) {
 <body>
   <div class="container py-5 text-center">
     <div class="cabecera-oficina">
-      <img src="../img/civil.png" alt="Oficina de Gestión Común Civil" />
+      <img src="../icons/oficinas/civil.png" alt="Oficina de Gestión Común Civil" />
       <h2 class="titulo-negro">Oficina de Gestión Común Civil</h2>
       <h5 class="text-muted">Iª Circunscripción Judicial</h5>
     </div>

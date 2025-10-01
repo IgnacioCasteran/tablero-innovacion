@@ -1,9 +1,9 @@
 <?php
-session_start();
-if (!isset($_SESSION['usuario'])) {
-    header("Location: login.html");
-    exit();
-}
+// secciones/agenda.php
+require_once __DIR__ . '/auth.php';
+require_login();          // exige sesión
+enforce_route_access();   // aplica restricciones por rol (coord solo Informes, STJ solo lectura)
+render_readonly_ui();
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -32,7 +32,7 @@ if (!isset($_SESSION['usuario'])) {
 
                 <ul class="nav flex-column mt-4">
                     <li class="nav-item"><a class="nav-link" href="carga_informe.php">Carga de Informe Periódico</a></li>
-                    <li class="nav-item"><a class="nav-link active" href="informe-registrados.php">Informes Registrados</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="informes-registrados.php">Informes Registrados</a></li>
                     <li class="nav-item"><a class="nav-link text-danger" href="logout.php">Cerrar sesión</a></li>
                 </ul>
 
