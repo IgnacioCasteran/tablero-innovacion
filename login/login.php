@@ -4,57 +4,50 @@ session_start();
 require_once __DIR__ . '/../conexion.php';
 
 try {
-  $cn = db(); // usa la conexión centralizada (lee .env)
+    $cn = db(); // usa la misma conexión (DB tabin)
 } catch (Throwable $e) {
-  header('Location: /login/login.html?error=db');
-  exit;
+    http_response_code(500);
+    die('Error de conexión');
 }
 
-// 1) Tomar datos del form
-$email = trim($_POST['email'] ?? '');
-$pass  = $_POST['password'] ?? '';
+$email    = trim($_POST['email'] ?? '');
+$password = (string)($_POST['password'] ?? '');
 
-if ($email === '' || $pass === '') {
-  header('Location: /login/login.html?error=campos');
-  exit;
+if ($email === '' || $password === '') {
+    header("Location: ./login.html?error=1");
+    exit();
 }
 
-// 2) Buscar usuario (ajusta nombres si hace falta)
-$stmt = $cn->prepare('SELECT id, nombre, email, password FROM usuarios WHERE email = ? LIMIT 1');
-$stmt->bind_param('s', $email);
+$stmt = $cn->prepare("SELECT id, nombre, email, password, rol FROM usuarios WHERE email = ? LIMIT 1");
+$stmt->bind_param("s", $email);
 $stmt->execute();
-$res  = $stmt->get_result();
-$user = $res->fetch_assoc();
+$stmt->bind_result($id, $nombre, $mail, $hash, $rol);
 
-if (!$user) {
-  header('Location: /login/login.html?error=cred');
-  exit;
-}
-
-// 3) Verificar contraseña
-$hash = $user['password'] ?? '';
 $ok = false;
+if ($stmt->fetch() && password_verify($password, $hash)) {
+    $ok = true;
+}
+$stmt->close();
 
-// Si está hasheada con bcrypt:
-if (strlen($hash) && preg_match('/^\$2y\$/', $hash)) {
-  $ok = password_verify($pass, $hash);
-} else {
-  // Si por ahora es texto plano:
-  $ok = ($pass === $hash);
+if ($ok) {
+    // seguridad: evita fijación de sesión
+    session_regenerate_id(true);
+
+    // variables que ya usa el sistema + rol
+    $_SESSION['usuario'] = $mail;                 // el check actual mira 'usuario'
+    $_SESSION['nombre']  = $nombre ?? '';
+    $_SESSION['user_id'] = (int)$id;
+    $_SESSION['rol']     = $rol ?: 'secretaria';  // 'secretaria' | 'coordinador' | 'stj'
+
+    header("Location: ../index.php");             // dejé tu redirección original
+    exit();
 }
 
-if (!$ok) {
-  header('Location: /login/login.html?error=cred');
-  exit;
-}
-
-// 4) Login OK → sesión y redirección a la app
-session_regenerate_id(true);
-$_SESSION['usuario_id'] = (int)$user['id'];
-$_SESSION['usuario']    = $user['nombre'] ?? $user['email'];
-
-header('Location: /index.php');
-exit;
+// credenciales inválidas
+// (pequeño delay para desmotivar fuerza bruta)
+usleep(300000);
+header("Location: ./login.html?error=1");
+exit();
 
 
 

@@ -1,9 +1,8 @@
 <?php
-session_start();
-if (!isset($_SESSION['usuario'])) {
-  header("Location: ../login/login.html");
-  exit();
-}
+// secciones/agenda.php
+require_once __DIR__ . '/../auth.php';
+require_login();          // exige sesión
+enforce_route_access();   // aplica restricciones por rol (coord solo Informes, STJ solo lectura)
 ?>
 
 <!DOCTYPE html>
@@ -38,7 +37,7 @@ if (!isset($_SESSION['usuario'])) {
 <body>
   <div class="container py-5 text-center">
     <div class="cabecera-oficina">
-      <img src="../img/penal.png" alt="Oficina Judicial Penal" />
+      <img src="../icons/oficinas/penal.png" alt="Oficina Judicial Penal" />
       <h2 class="titulo-rojo">Oficina Judicial Penal</h2>
       <h5 class="text-muted">Iª Circunscripción Judicial</h5>
     </div>

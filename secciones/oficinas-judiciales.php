@@ -1,9 +1,8 @@
 <?php
-session_start();
-if (!isset($_SESSION['usuario'])) {
-    header("Location: ../login/login.html");
-    exit();
-}
+// secciones/agenda.php
+require_once __DIR__ . '/../auth.php';
+require_login();          // exige sesión
+enforce_route_access(); 
 
 $carpeta = __DIR__ . '/../uploads/judiciales/';
 $mensaje = "";
@@ -240,4 +239,3 @@ $archivos = is_dir($carpeta) ? array_values(array_diff(scandir($carpeta), ['.', 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
