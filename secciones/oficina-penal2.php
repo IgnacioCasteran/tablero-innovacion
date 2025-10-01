@@ -1,9 +1,11 @@
 <?php
-// secciones/agenda.php
-require_once __DIR__ . '/../auth.php';
-require_login();          // exige sesión
-enforce_route_access();   // aplica restricciones por rol (coord solo Informes, STJ solo lectura)
+session_start();
+if (!isset($_SESSION['usuario'])) {
+  header("Location: ../login/login.html");
+  exit();
+}
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 
@@ -36,7 +38,7 @@ enforce_route_access();   // aplica restricciones por rol (coord solo Informes, 
 <body>
   <div class="container py-5 text-center">
     <div class="cabecera-oficina">
-      <img src="../icons/oficinas/penal.png" alt="Oficina Judicial Penal" />
+      <img src="../img/penal.png" alt="Oficina Judicial Penal" />
       <h2 class="titulo-rojo">Oficina Judicial Penal</h2>
       <h5 class="text-muted">IIª Circunscripción Judicial</h5>
     </div>

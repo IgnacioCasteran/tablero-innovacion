@@ -1,9 +1,9 @@
 <?php
-// secciones/agenda.php
-require_once __DIR__ . '/../auth.php';
-require_login();          // exige sesión
-enforce_route_access();   // aplica restricciones por rol (coord solo Informes, STJ solo lectura)
-render_readonly_ui();
+session_start();
+if (!isset($_SESSION['usuario'])) {
+  header("Location: ../login/login.html");
+  exit();
+}
 ?>
 
 <!DOCTYPE html>
@@ -288,7 +288,7 @@ render_readonly_ui();
           archivos.forEach(a => {
             const li = document.createElement('li');
             li.className = 'list-group-item d-flex justify-content-between align-items-center';
-            const url = `../uploads/proyectos/${encodeURIComponent(a.proyecto_id)}/${encodeURIComponent(a.archivo)}`;
+            const url = a.url || `../uploads/proyectos/${a.proyecto_id}/${a.archivo}`;
             li.innerHTML = `
         <div>
           <strong>${a.nombre_original}</strong>

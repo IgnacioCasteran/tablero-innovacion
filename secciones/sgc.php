@@ -1,8 +1,9 @@
 <?php
-// secciones/agenda.php
-require_once __DIR__ . '/../auth.php';
-require_login();          // exige sesión
-enforce_route_access();
+session_start();
+if (!isset($_SESSION['usuario'])) {
+    header("Location: ../login/login.html");
+    exit();
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
