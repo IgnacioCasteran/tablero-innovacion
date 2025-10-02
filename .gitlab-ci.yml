@@ -25,67 +25,61 @@ deploy:
   image: alpine:3.19
   before_script:
     - apk add --no-cache openssh
-    - chmod og= "$SSH_KEY_DOCKER_01"
+    - chmod 600 "$SSH_KEY_DOCKER_01"     # permisos correctos para la clave
   script:
     - |
       ssh -o StrictHostKeyChecking=no -i "$SSH_KEY_DOCKER_01" "$DEPLOY_USER@$IP_ADDRESS_DOCKER_01" "
         set -e
 
-        # Login y pull de imagen
+        echo 'Login al registry...'
         docker login -u \"$CI_REGISTRY_USER\" -p \"$CI_REGISTRY_PASSWORD\" \"$CI_REGISTRY\"
+
+        echo 'Pull de la imagen...'
         docker pull \"$DOCKER_IMAGE:latest\"
 
-        # Asegurar volumen persistente
-        docker volume inspect \"$UPLOADS_VOL\" >/dev/null 2>&1 || docker volume create \"$UPLOADS_VOL\"
+        echo 'Asegurar volumen persistente...'
+        docker volume create \"$UPLOADS_VOL\" >/dev/null 2>&1 || true
 
-        # Si existía un contenedor viejo sin volumen, migrar uploads (una sola vez)
+        # Migrar uploads del contenedor viejo al volumen (solo si existía)
         if docker ps -a --format '{{.Names}}' | grep -q '^tablero-innovacion$'; then
           echo 'Migrando /var/www/html/uploads del contenedor antiguo al volumen...'
           docker run --rm --volumes-from tablero-innovacion -v \"$UPLOADS_VOL\":/dest alpine:3.19 \
-            sh -lc 'mkdir -p /dest && cp -a /var/www/html/uploads/. /dest/ || true'
+            sh -c 'mkdir -p /dest && cp -a /var/www/html/uploads/. /dest/ || true'
           docker stop tablero-innovacion || true
           docker rm   tablero-innovacion || true
         fi
 
-        # Por las dudas: detener/limpiar si quedó algo
-        docker stop tablero-innovacion >/dev/null 2>&1 || true
-        docker rm   tablero-innovacion >/dev/null 2>&1 || true
-
-        # Correr nueva versión con el volumen montado
+        echo 'Lanzando nuevo contenedor...'
         docker run -d --name tablero-innovacion \
           -p 8089:80 \
           --env-file /opt/tablero-innovacion/.env \
           -v \"$UPLOADS_VOL\":/var/www/html/uploads \
           \"$DOCKER_IMAGE:latest\"
 
-        # Estructura y permisos
+        echo 'Permisos y estructura en /uploads...'
         docker exec tablero-innovacion sh -lc '
           set -e
-          for d in documentacion intervenciones judiciales objetos procedimientos proyectos registros reuniones sgc2025; do
-            mkdir -p /var/www/html/uploads/\"$d\"
-          done
+          mkdir -p /var/www/html/uploads
           chown -R www-data:www-data /var/www/html/uploads
-        '
-
-        # Semilla de .htaccess dentro del volumen (si falta)
-        docker exec tablero-innovacion sh -lc '
+          for d in documentacion intervenciones judiciales objetos procedimientos proyectos registros reuniones sgc2025; do
+            mkdir -p /var/www/html/uploads/$d
+          done
           if [ ! -f /var/www/html/uploads/.htaccess ]; then
-            cat > /var/www/html/uploads/.htaccess <<'\''HTEND'\''
-Options -Indexes
-
-<FilesMatch "\.(php|phar|phtml|cgi|sh)$">
-  Require all denied
-</FilesMatch>
-
-<IfModule mod_headers.c>
-  Header set X-Content-Type-Options "nosniff"
-</IfModule>
-HTEND
+            printf \"%s\n\" \
+\"Options -Indexes\" \
+\"<FilesMatch \\\\.(php|phar|phtml|cgi|pl|py|cgi)$>\" \
+\"  Require all denied\" \
+\"</FilesMatch>\" \
+\"<IfModule mod_headers.c>\" \
+\"  Header set Content-Type-Options \\\"nosniff\\\"\" \
+\"</IfModule>\" \
+> /var/www/html/uploads/.htaccess
+            chown www-data:www-data /var/www/html/uploads/.htaccess
           fi
-          chown www-data:www-data /var/www/html/uploads/.htaccess
         '
       "
   tags: [ dind ]
   only: [ main, infra ]
+
 
 
