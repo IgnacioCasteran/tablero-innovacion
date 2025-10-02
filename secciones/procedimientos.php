@@ -1,10 +1,9 @@
 <?php
-// secciones/procedimientos.php
-session_start();
-if (!isset($_SESSION['usuario'])) {
-  header("Location: ../login/login.html");
-  exit();
-}
+// secciones/agenda.php
+require_once __DIR__ . '/../auth.php';
+require_login();          // exige sesión
+enforce_route_access(); 
+render_readonly_ui();
 
 /* ---------- Config ---------- */
 $BASE_DIR = realpath(__DIR__ . '/../uploads/procedimientos');
