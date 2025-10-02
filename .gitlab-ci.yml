@@ -31,34 +31,64 @@ deploy:
       ssh -o StrictHostKeyChecking=no -i "$SSH_KEY_DOCKER_01" "$DEPLOY_USER@$IP_ADDRESS_DOCKER_01" "
         set -e
 
+        echo '[DEPLOY] Login & pull'
         docker login -u \"$CI_REGISTRY_USER\" -p \"$CI_REGISTRY_PASSWORD\" \"$CI_REGISTRY\"
         docker pull \"$DOCKER_IMAGE:latest\"
 
-        # Volumen persistente
+        echo '[DEPLOY] Asegurar volumen persistente'
         docker volume inspect \"$UPLOADS_VOL\" >/dev/null 2>&1 || docker volume create \"$UPLOADS_VOL\"
 
-        # Migración 1 sola vez si existía contenedor sin volumen
+        echo '[DEPLOY] Migración (si venías de un contenedor sin volumen, sólo 1ª vez)'
         if docker ps -a --format '{{.Names}}' | grep -q '^tablero-innovacion$'; then
-          echo 'Migrando /var/www/html/uploads del contenedor antiguo al volumen...'
+          echo '  - Migrando /var/www/html/uploads del contenedor antiguo al volumen...'
           docker run --rm --volumes-from tablero-innovacion -v \"$UPLOADS_VOL\":/dest alpine:3.19 \
             sh -c 'mkdir -p /dest && cp -a /var/www/html/uploads/. /dest/ || true'
           docker stop tablero-innovacion || true
           docker rm   tablero-innovacion || true
         fi
 
-        # (Opcional) pre-crear subcarpetas dentro del volumen
+        echo '[DEPLOY] Pre-crear carpetas útiles dentro del volumen'
         docker run --rm -v \"$UPLOADS_VOL\":/dest alpine:3.19 \
           sh -c 'mkdir -p /dest/{documentacion,intervenciones,judiciales,objetos,procedimientos,proyectos,registros,reuniones,sgc2025}'
 
-        # Correr nueva versión con volumen montado
+        #############################################
+        # SMOKE TEST (opcional) – 1ª parte: antes de levantar el contenedor
+        #############################################
+        echo '[SMOKE] Sentinel previo al contenedor'
+        docker run --rm -v \"$UPLOADS_VOL\":/dest alpine:3.19 sh -c '
+          if [ ! -f /dest/.ci-sentinel ]; then
+            date > /dest/.ci-sentinel
+            echo \"Creado /uploads/.ci-sentinel\"
+          else
+            echo \"Ya existía /uploads/.ci-sentinel\"
+          fi
+          echo \"SHA1 sentinel (pre):\"
+          sha1sum /dest/.ci-sentinel || true
+          echo \"Conteo de archivos aprox (pre):\"
+          find /dest -type f | wc -l
+        '
+
+        echo '[DEPLOY] Levantar nueva versión'
         docker run -d --name tablero-innovacion \
           -p 8089:80 \
           --env-file /opt/tablero-innovacion/.env \
           -v \"$UPLOADS_VOL\":/var/www/html/uploads \
           \"$DOCKER_IMAGE:latest\"
 
-        # Permisos dentro del contenedor
+        echo '[DEPLOY] Permisos dentro del contenedor'
         docker exec tablero-innovacion sh -lc 'mkdir -p /var/www/html/uploads && chown -R www-data:www-data /var/www/html/uploads'
+
+        #############################################
+        # SMOKE TEST (opcional) – 2ª parte: después de levantar el contenedor
+        #############################################
+        echo '[SMOKE] Verificación post-deploy'
+        docker run --rm -v \"$UPLOADS_VOL\":/dest alpine:3.19 sh -c '
+          ls -l /dest/.ci-sentinel || true
+          echo \"SHA1 sentinel (post):\"
+          sha1sum /dest/.ci-sentinel || true
+          echo \"Top de archivos en /uploads:\"
+          find /dest -maxdepth 2 -type f | head -n 10
+        '
       "
   tags: [ dind ]
   only: [ main, infra ]
