@@ -1,9 +1,8 @@
 <?php
-session_start();
-if (!isset($_SESSION['usuario'])) {
-  header("Location: ../login/login.html");
-  exit();
-}
+// secciones/agenda.php
+require_once __DIR__ . '/../auth.php';
+require_login();          // exige sesión
+enforce_route_access();   // aplica restricciones por rol (coord solo Informes, STJ solo lectura)
 ?>
 <!DOCTYPE html>
 <html lang="es">
