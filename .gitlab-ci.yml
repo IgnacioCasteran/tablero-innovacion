@@ -6,41 +6,86 @@ variables:
   DOCKER_IMAGE: $CI_REGISTRY_IMAGE/tablero-innovacion
   DOCKER_TAG: $CI_COMMIT_SHORT_SHA
   DEPLOY_USER: gitlab
-  UPLOADS_VOL: tablero_innovacion_uploads   # 🔸 volumen persistente
+  UPLOADS_VOL: tablero_innovacion_uploads   # volumen persistente para /uploads
 
 build:
   stage: build
   image: docker:24.0.5
-  services: [ "docker:24.0.5-dind" ]
+  services: ["docker:24.0.5-dind"]
   script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" "$CI_REGISTRY" --password-stdin
-    - docker build -t $DOCKER_IMAGE:$DOCKER_TAG -t $DOCKER_IMAGE:latest .
-    - docker push $DOCKER_IMAGE:$DOCKER_TAG
-    - docker push $DOCKER_IMAGE:latest
+    - docker build -t "$DOCKER_IMAGE:$DOCKER_TAG" -t "$DOCKER_IMAGE:latest" .
+    - docker push "$DOCKER_IMAGE:$DOCKER_TAG"
+    - docker push "$DOCKER_IMAGE:latest"
   tags: [ dind ]
   only: [ main, infra ]
 
 deploy:
   stage: deploy
-  image: alpine:latest
+  image: alpine:3.19
   before_script:
     - apk add --no-cache openssh
-    - chmod og= $SSH_KEY_DOCKER_01
+    - chmod og= "$SSH_KEY_DOCKER_01"
   script:
     - |
-      ssh -o StrictHostKeyChecking=no -i $SSH_KEY_DOCKER_01 $DEPLOY_USER@$IP_ADDRESS_DOCKER_01 "
+      ssh -o StrictHostKeyChecking=no -i "$SSH_KEY_DOCKER_01" "$DEPLOY_USER@$IP_ADDRESS_DOCKER_01" "
         set -e
-        docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY &&
-        docker pull $DOCKER_IMAGE:latest &&
-        docker stop tablero-innovacion || true &&
-        docker rm   tablero-innovacion || true &&
-        docker volume create $UPLOADS_VOL || true &&
+
+        # Login y pull de imagen
+        docker login -u \"$CI_REGISTRY_USER\" -p \"$CI_REGISTRY_PASSWORD\" \"$CI_REGISTRY\"
+        docker pull \"$DOCKER_IMAGE:latest\"
+
+        # Asegurar volumen persistente
+        docker volume inspect \"$UPLOADS_VOL\" >/dev/null 2>&1 || docker volume create \"$UPLOADS_VOL\"
+
+        # Si existía un contenedor viejo sin volumen, migrar uploads (una sola vez)
+        if docker ps -a --format '{{.Names}}' | grep -q '^tablero-innovacion$'; then
+          echo 'Migrando /var/www/html/uploads del contenedor antiguo al volumen...'
+          docker run --rm --volumes-from tablero-innovacion -v \"$UPLOADS_VOL\":/dest alpine:3.19 \
+            sh -lc 'mkdir -p /dest && cp -a /var/www/html/uploads/. /dest/ || true'
+          docker stop tablero-innovacion || true
+          docker rm   tablero-innovacion || true
+        fi
+
+        # Por las dudas: detener/limpiar si quedó algo
+        docker stop tablero-innovacion >/dev/null 2>&1 || true
+        docker rm   tablero-innovacion >/dev/null 2>&1 || true
+
+        # Correr nueva versión con el volumen montado
         docker run -d --name tablero-innovacion \
           -p 8089:80 \
           --env-file /opt/tablero-innovacion/.env \
-          -v $UPLOADS_VOL:/var/www/html/uploads \
-          $DOCKER_IMAGE:latest &&
-        docker exec tablero-innovacion sh -c 'mkdir -p /var/www/html/uploads && chown -R www-data:www-data /var/www/html/uploads'
+          -v \"$UPLOADS_VOL\":/var/www/html/uploads \
+          \"$DOCKER_IMAGE:latest\"
+
+        # Estructura y permisos
+        docker exec tablero-innovacion sh -lc '
+          set -e
+          for d in documentacion intervenciones judiciales objetos procedimientos proyectos registros reuniones sgc2025; do
+            mkdir -p /var/www/html/uploads/\"$d\"
+          done
+          chown -R www-data:www-data /var/www/html/uploads
+        '
+
+        # Semilla de .htaccess dentro del volumen (si falta)
+        docker exec tablero-innovacion sh -lc '
+          if [ ! -f /var/www/html/uploads/.htaccess ]; then
+            cat > /var/www/html/uploads/.htaccess <<'\''HTEND'\''
+Options -Indexes
+
+<FilesMatch "\.(php|phar|phtml|cgi|sh)$">
+  Require all denied
+</FilesMatch>
+
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+</IfModule>
+HTEND
+          fi
+          chown www-data:www-data /var/www/html/uploads/.htaccess
+        '
       "
   tags: [ dind ]
   only: [ main, infra ]
+
+
