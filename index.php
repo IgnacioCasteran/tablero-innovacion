@@ -4,10 +4,27 @@ require_once __DIR__ . '/auth.php';
 require_login();                 // exige sesión
 enforce_route_access();          // por si alguien pega URLs directas
 
-// rol y nombre/email para mostrar
-$ROL        = current_role();    // 'secretaria' | 'coordinador' | 'stj'
+// === Rol y usuario (normalizado para que funcione en prod) ===
+$ROL_RAW  = current_role();                     // lo que venga del SSO/BD
+$ROL      = mb_strtolower(trim((string)$ROL_RAW));
+// quitar tildes por si viniera “Coordinadores” con acentos
+$ROL      = strtr($ROL, ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ä'=>'a','ë'=>'e','ï'=>'i','ö'=>'o','ü'=>'u']);
+
+// true si es “coordinador”, “coordinadores” o empieza por “coordinador…”
+$IS_COORD = ($ROL === 'coordinador'
+          || $ROL === 'coordinadores'
+          || strpos($ROL, 'coordinador') === 0);
+
+// email a mostrar
 $USER_EMAIL = $_SESSION['usuario'] ?? ($_SESSION['user']['email'] ?? '');
-$IS_COORD   = ($ROL === 'coordinador');
+
+// 🔎 DEBUG (quitá esto luego)
+error_log(
+  'TABLERO role debug | user='.$USER_EMAIL.
+  ' | raw='.var_export(current_role_raw(), true).
+  ' | norm='.$ROL.
+  ' | uri='.$_SERVER['REQUEST_URI']
+);
 
 // helper para renderizar un “botón” deshabilitado
 function disabled_link($label, $iconPath = null) {
@@ -16,6 +33,7 @@ function disabled_link($label, $iconPath = null) {
         . $icon . htmlspecialchars($label) .
         '</span>';
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
