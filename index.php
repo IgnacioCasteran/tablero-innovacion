@@ -18,13 +18,6 @@ $IS_COORD = ($ROL === 'coordinador'
 // email a mostrar
 $USER_EMAIL = $_SESSION['usuario'] ?? ($_SESSION['user']['email'] ?? '');
 
-// 🔎 DEBUG (quitá esto luego)
-error_log(
-  'TABLERO role debug | user='.$USER_EMAIL.
-  ' | raw='.var_export(current_role_raw(), true).
-  ' | norm='.$ROL.
-  ' | uri='.$_SERVER['REQUEST_URI']
-);
 
 // helper para renderizar un “botón” deshabilitado
 function disabled_link($label, $iconPath = null) {
