@@ -14,7 +14,7 @@ build-test:
   image: docker:24.0.5
   services: ["docker:24.0.5-dind"]
   script:
-    - echo "$CI_REGISTRY"| docker login -u "$CI_REGISTRY_USER" "$CI_REGISTRY" --password-stdin
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" "$CI_REGISTRY" --password-stdin
     - docker build -t $DOCKER_IMAGE_TEST:$DOCKER_TAG -t $DOCKER_IMAGE_TEST:latest .
     - docker push $DOCKER_IMAGE_TEST:$DOCKER_TAG
     - docker push $DOCKER_IMAGE_TEST:latest
