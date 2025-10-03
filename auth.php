@@ -72,58 +72,68 @@ function _block_stj_if_writes(): void {
    Acceso por rol a rutas
    ========================= */
 function enforce_route_access(): void {
+  // Controlar solo requests a PHP (ignorar assets)
+  $reqPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '';
+  $ext = strtolower(pathinfo($reqPath, PATHINFO_EXTENSION));
+  if ($ext !== '' && $ext !== 'php') return;
+
   $role = current_role();
 
-  // STJ: puede ver TODO, pero se bloquea cualquier intento de escritura
+  // STJ: lectura permitida, escrituras bloqueadas
   if ($role === 'stj') {
     _block_stj_if_writes();
-    // si no escribe, puede seguir viendo la página
     return;
   }
 
-  if ($role === 'coordinador') {
-    $script = basename($_SERVER['SCRIPT_NAME']);
+  // === Coordinador: whitelist estricta ===
+  // (aceptamos 'coordinador', 'coordinadores', variantes con mayúsculas/tildes)
+  $r = mb_strtolower((string)$role);
+  $r = strtr($r, ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ä'=>'a','ë'=>'e','ï'=>'i','ö'=>'o','ü'=>'u']);
+  $isCoord = ($r === 'coordinador' || $r === 'coordinadores' || strpos($r, 'coordinador') === 0);
 
-    // Páginas permitidas para COORDINADOR (sin SGC)
-    $allowed = [
-      // ===== Informes (ver/editar) =====
-      'informe-registrados.php',
-      'carga_informe.php',
-      'editar_informe.php',
-      'guardar_informe.php',
-      'eliminar_informe.php',
-      'obtener_informes.php',
+  if ($isCoord) {
+    // Normalizamos paths
+    $scriptPath = parse_url($_SERVER['SCRIPT_NAME'] ?? '', PHP_URL_PATH) ?? ''; // e.g. /secciones/circunscripcion1.php
+    $scriptPath = ltrim($scriptPath, '/');                                       // e.g. secciones/circunscripcion1.php
+    $scriptFile = basename($scriptPath);                                         // e.g. circunscripcion1.php
 
-      // ===== Secciones adicionales habilitadas =====
+    // Archivos permitidos (solo nombres de archivo)
+    $allowFiles = [
+      // Coordinación y navegación
+      'index.php', 'login.php', 'login.html', 'logout.php',
       'coordinacion.php',
-      'circunscripcion1.php',
-      'oficina-penal1.php',
-      'oficina-civil1.php',
-      'oficina-familia1.php',
-      'oficina-ejecucion-cyq1.php',
-      'circunscripcion2.php',
-      'oficina-penal2.php',
-      'oficina-familia2.php',
-      'circunscripcion3.php',
-      'oficina-penal3-acha.php',
-      'oficina-penal3-25mayo.php',
-      'circunscripcion4.php',
+
+      // Vistas de circunscripciones y oficinas
+      'circunscripcion1.php', 'circunscripcion2.php', 'circunscripcion3.php', 'circunscripcion4.php',
+      'oficina-penal1.php', 'oficina-civil1.php', 'oficina-familia1.php', 'oficina-ejecucion-cyq1.php',
+      'oficina-penal2.php', 'oficina-familia2.php',
+      'oficina-penal3-acha.php', 'oficina-penal3-25mayo.php',
       'oficina-penal4.php',
 
-      // ===== Navegación básica =====
-      'index.php', 'login.php', 'login.html', 'logout.php',
+      // (si necesitás APIs específicas de Coordinación, agregalas acá)
+      // 'api/api-coordinacion.php',
     ];
 
-    if (!in_array($script, $allowed, true)) {
+    // También aceptamos el path con carpeta 'secciones/' (según cómo venga SCRIPT_NAME)
+    $allowPaths = array_merge(
+      $allowFiles,
+      array_map(fn($f) => "secciones/$f", $allowFiles)
+    );
+
+    $ok = in_array($scriptFile, $allowFiles, true) || in_array($scriptPath, $allowPaths, true);
+
+    if (!$ok) {
       http_response_code(403);
       echo 'Acceso restringido para coordinadores.';
+      // --- DEBUG opcional: descomentá para ver qué llega ---
+      // error_log("DENIED coord | scriptPath=$scriptPath | scriptFile=$scriptFile");
       exit;
     }
   }
 
-  // secretaria: acceso completo
-  // stj: ya quedó en solo lectura por _block_stj_if_writes()
+  // Otros roles (secretaría, etc.): acceso completo
 }
+
 
 /* =========================
    Permisos por módulo (tu lógica)
