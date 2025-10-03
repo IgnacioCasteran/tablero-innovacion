@@ -92,45 +92,69 @@ function _block_stj_if_writes(): void {
    Acceso por rol a rutas
    ========================= */
 function enforce_route_access(): void {
-  // Ignorá assets (solo controlamos PHP)
-  $path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '';
-  $ext  = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+  // Controlar solo requests a PHP (ignorar assets)
+  $reqPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '';
+  $ext = strtolower(pathinfo($reqPath, PATHINFO_EXTENSION));
   if ($ext !== '' && $ext !== 'php') return;
 
   $role = current_role();
 
-  // STJ: puede ver TODO, pero se bloquea cualquier intento de escritura
+  // STJ: lectura permitida, escrituras bloqueadas
   if ($role === 'stj') {
     _block_stj_if_writes();
-    return; // lectura permitida
+    return;
   }
 
-  // COORDINADOR: solo Home y Coordinación (y login/logout)
-  if (is_coordinator()) {
-    // Normalizamos el script en formato relativo sin slash inicial
-    $script = ltrim(parse_url($_SERVER['SCRIPT_NAME'] ?? '', PHP_URL_PATH), '/');
+  // === Coordinador: whitelist estricta ===
+  $r = mb_strtolower((string)$role);
+  $r = strtr($r, ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ä'=>'a','ë'=>'e','ï'=>'i','ö'=>'o','ü'=>'u']);
+  $isCoord = ($r === 'coordinador' || $r === 'coordinadores' || strpos($r, 'coordinador') === 0);
 
-    // Whitelist estricta para coordinador
-    $allowed = [
-      'index.php',
-      'secciones/coordinacion.php',
-      // Login/Logout
-      'login/login.php','login/login.html','login/logout.php',
-      // (Opcional) Debug temporal de rol: QUITAR cuando termines
-      'tools/rol-debug.php',
-      // (Si Coordinación usa APIs propias, agregalas aquí)
-      // 'api/api-coordinacion.php',
+  if ($isCoord) {
+    // Normalizamos paths
+    $scriptPath = parse_url($_SERVER['SCRIPT_NAME'] ?? '', PHP_URL_PATH) ?? ''; // /secciones/circunscripcion1.php
+    $scriptPath = ltrim($scriptPath, '/');                                       // secciones/circunscripcion1.php
+    $scriptFile = basename($scriptPath);                                         // circunscripcion1.php
+
+    // Archivos permitidos (union de lo tuyo + lo de infra si hiciera falta)
+    $allowFiles = [
+      // Home y autenticación (root y/o carpeta login)
+      'index.php', 'login.php', 'login.html', 'logout.php',
+      'login/login.php', 'login/login.html', 'login/logout.php',
+
+      // Coordinación y navegación dentro de secciones
+      'coordinacion.php',
+      'circunscripcion1.php', 'circunscripcion2.php', 'circunscripcion3.php', 'circunscripcion4.php',
+      'oficina-penal1.php', 'oficina-civil1.php', 'oficina-familia1.php', 'oficina-ejecucion-cyq1.php',
+      'oficina-penal2.php', 'oficina-familia2.php',
+      'oficina-penal3-acha.php', 'oficina-penal3-25mayo.php',
+      'oficina-penal4.php',
+
+      // Informes (si el coordinador debe poder verlos/editar)
+      'informe-registrados.php', 'carga_informe.php', 'editar_informe.php',
+      'guardar_informe.php', 'eliminar_informe.php', 'obtener_informes.php',
     ];
 
-    if (!in_array($script, $allowed, true)) {
+    // Aceptar también el path con carpeta secciones/*
+    $allowPaths = array_merge(
+      $allowFiles,
+      array_map(fn($f) => "secciones/$f", $allowFiles)
+    );
+
+    $ok = in_array($scriptFile, $allowFiles, true) || in_array($scriptPath, $allowPaths, true);
+
+    if (!$ok) {
       http_response_code(403);
       echo 'Acceso restringido para coordinadores.';
+      // error_log("DENIED coord | scriptPath=$scriptPath | scriptFile=$scriptFile"); // debug opcional
       exit;
     }
   }
 
-  // secretaria (u otros): acceso completo
+  // Otros roles: acceso completo
 }
+
+
 
 /* =========================
    Permisos por módulo (tu lógica)
