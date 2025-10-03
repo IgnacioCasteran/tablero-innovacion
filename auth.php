@@ -26,8 +26,28 @@ function require_login(): void {
   }
 }
 
+/* =========================
+   Rol de la sesión
+   ========================= */
+function current_role_raw() {
+  // Ajustá keys si tu login guarda el rol en otra estructura
+  return $_SESSION['rol'] ?? ($_SESSION['user']['rol'] ?? null);
+}
+
 function current_role(): ?string {
-  return $_SESSION['rol'] ?? null; // la cargamos en el login
+  $raw = current_role_raw();
+  if ($raw === null) return null;
+  $rol = mb_strtolower(trim((string)$raw));
+  // quitar tildes (por si viene “Coordinadores”, etc.)
+  return strtr($rol, [
+    'á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u',
+    'ä'=>'a','ë'=>'e','ï'=>'i','ö'=>'o','ü'=>'u'
+  ]);
+}
+
+function is_coordinator(): bool {
+  $r = current_role();
+  return ($r === 'coordinador' || $r === 'coordinadores' || strpos((string)$r, 'coordinador') === 0);
 }
 
 /* =========================
@@ -86,35 +106,36 @@ function enforce_route_access(): void {
   }
 
   // === Coordinador: whitelist estricta ===
-  // (aceptamos 'coordinador', 'coordinadores', variantes con mayúsculas/tildes)
   $r = mb_strtolower((string)$role);
   $r = strtr($r, ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ä'=>'a','ë'=>'e','ï'=>'i','ö'=>'o','ü'=>'u']);
   $isCoord = ($r === 'coordinador' || $r === 'coordinadores' || strpos($r, 'coordinador') === 0);
 
   if ($isCoord) {
     // Normalizamos paths
-    $scriptPath = parse_url($_SERVER['SCRIPT_NAME'] ?? '', PHP_URL_PATH) ?? ''; // e.g. /secciones/circunscripcion1.php
-    $scriptPath = ltrim($scriptPath, '/');                                       // e.g. secciones/circunscripcion1.php
-    $scriptFile = basename($scriptPath);                                         // e.g. circunscripcion1.php
+    $scriptPath = parse_url($_SERVER['SCRIPT_NAME'] ?? '', PHP_URL_PATH) ?? ''; // /secciones/circunscripcion1.php
+    $scriptPath = ltrim($scriptPath, '/');                                       // secciones/circunscripcion1.php
+    $scriptFile = basename($scriptPath);                                         // circunscripcion1.php
 
-    // Archivos permitidos (solo nombres de archivo)
+    // Archivos permitidos (union de lo tuyo + lo de infra si hiciera falta)
     $allowFiles = [
-      // Coordinación y navegación
+      // Home y autenticación (root y/o carpeta login)
       'index.php', 'login.php', 'login.html', 'logout.php',
-      'coordinacion.php',
+      'login/login.php', 'login/login.html', 'login/logout.php',
 
-      // Vistas de circunscripciones y oficinas
+      // Coordinación y navegación dentro de secciones
+      'coordinacion.php',
       'circunscripcion1.php', 'circunscripcion2.php', 'circunscripcion3.php', 'circunscripcion4.php',
       'oficina-penal1.php', 'oficina-civil1.php', 'oficina-familia1.php', 'oficina-ejecucion-cyq1.php',
       'oficina-penal2.php', 'oficina-familia2.php',
       'oficina-penal3-acha.php', 'oficina-penal3-25mayo.php',
       'oficina-penal4.php',
 
-      // (si necesitás APIs específicas de Coordinación, agregalas acá)
-      // 'api/api-coordinacion.php',
+      // Informes (si el coordinador debe poder verlos/editar)
+      'informe-registrados.php', 'carga_informe.php', 'editar_informe.php',
+      'guardar_informe.php', 'eliminar_informe.php', 'obtener_informes.php',
     ];
 
-    // También aceptamos el path con carpeta 'secciones/' (según cómo venga SCRIPT_NAME)
+    // Aceptar también el path con carpeta secciones/*
     $allowPaths = array_merge(
       $allowFiles,
       array_map(fn($f) => "secciones/$f", $allowFiles)
@@ -125,14 +146,14 @@ function enforce_route_access(): void {
     if (!$ok) {
       http_response_code(403);
       echo 'Acceso restringido para coordinadores.';
-      // --- DEBUG opcional: descomentá para ver qué llega ---
-      // error_log("DENIED coord | scriptPath=$scriptPath | scriptFile=$scriptFile");
+      // error_log("DENIED coord | scriptPath=$scriptPath | scriptFile=$scriptFile"); // debug opcional
       exit;
     }
   }
 
-  // Otros roles (secretaría, etc.): acceso completo
+  // Otros roles: acceso completo
 }
+
 
 
 /* =========================
@@ -140,8 +161,8 @@ function enforce_route_access(): void {
    ========================= */
 function can_write_module(string $module): bool {
   $r = current_role();
-  if ($r === 'secretaria') return true;                // full
-  if ($r === 'coordinador') return ($module === 'informes'); // sólo Informes
+  if ($r === 'secretaria') return true;                   // full
+  if (is_coordinator())   return ($module === 'coordinacion'); // solo Coordinación
   // stj (u otro): solo lectura
   return false;
 }
