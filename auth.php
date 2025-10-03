@@ -12,6 +12,7 @@ function is_logged_in(): bool {
 /* Login URL robusto según ubicación actual (root o subcarpetas) */
 function _login_href(): string {
   $self = $_SERVER['PHP_SELF'] ?? '';
+  // si estamos en /secciones/* o /api/* -> usar ../login/
   if (str_contains($self, '/secciones/') || str_contains($self, '/api/')) {
     return '../login/login.html';
   }
@@ -26,55 +27,27 @@ function require_login(): void {
 }
 
 /* =========================
-   Normalización de rol
+   Rol de la sesión
    ========================= */
-/** Devuelve el rol “crudo” guardado en sesión (sin tocar). Puede ser string o array. */
-function current_role_raw(): mixed {
-  return $_SESSION['rol'] ?? null; // lo carga el login/SSO
+function current_role_raw() {
+  // Ajustá keys si tu login guarda el rol en otra estructura
+  return $_SESSION['rol'] ?? ($_SESSION['user']['rol'] ?? null);
 }
 
-/** Normaliza string: minúsculas, sin tildes. */
-function _normstr(?string $s): string {
-  $s = mb_strtolower(trim((string)$s));
-  // quitar acentos / dieresis
-  $s = strtr($s, [
-    'á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u',
-    'ä'=>'a','ë'=>'e','ï'=>'i','ö'=>'o','ü'=>'u',
-    'ñ'=>'n',
-  ]);
-  return $s;
-}
-
-/**
- * Devuelve rol normalizado para toda la app:
- *   'secretaria' | 'coordinador' | 'stj' | (otro literal normalizado si no matchea)
- * Acepta variantes tipo “Coordinadores La Pampa”, “Coordinación…”, etc.
- */
 function current_role(): ?string {
   $raw = current_role_raw();
-
-  // si viene array de grupos/roles, probamos aplanar
-  if (is_array($raw)) {
-    // preferimos el que contenga “coordinador”, “secretar”, “stj”
-    foreach ($raw as $r) {
-      $n = _normstr((string)$r);
-      if (str_contains($n,'coordinador')) return 'coordinador';
-      if (str_starts_with($n,'secretar'))  return 'secretaria';
-      if (str_starts_with($n,'stj') || $n==='stj') return 'stj';
-    }
-    // si no, nos quedamos con el primero
-    $raw = reset($raw);
-  }
-
   if ($raw === null) return null;
-  $n = _normstr((string)$raw);
+  $rol = mb_strtolower(trim((string)$raw));
+  // quitar tildes (por si viene “Coordinadores”, etc.)
+  return strtr($rol, [
+    'á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u',
+    'ä'=>'a','ë'=>'e','ï'=>'i','ö'=>'o','ü'=>'u'
+  ]);
+}
 
-  if (str_contains($n,'coordinador')) return 'coordinador'; // “coordinadores…”, “coordinacion…”
-  if (str_starts_with($n,'secretar'))  return 'secretaria'; // “secretaria/o…”
-  if ($n === 'stj' || str_starts_with($n,'stj')) return 'stj';
-
-  // por si viene algo desconocido, devolvemos lo normalizado
-  return $n ?: null;
+function is_coordinator(): bool {
+  $r = current_role();
+  return ($r === 'coordinador' || $r === 'coordinadores' || strpos((string)$r, 'coordinador') === 0);
 }
 
 /* =========================
@@ -119,8 +92,12 @@ function _block_stj_if_writes(): void {
    Acceso por rol a rutas
    ========================= */
 function enforce_route_access(): void {
+  // Ignorá assets (solo controlamos PHP)
+  $path = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '';
+  $ext  = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+  if ($ext !== '' && $ext !== 'php') return;
+
   $role = current_role();
-  $script = basename($_SERVER['SCRIPT_NAME'] ?? '');
 
   // STJ: puede ver TODO, pero se bloquea cualquier intento de escritura
   if ($role === 'stj') {
@@ -128,52 +105,31 @@ function enforce_route_access(): void {
     return; // lectura permitida
   }
 
-  // COORDINADOR: restringir navegación
-  if ($role === 'coordinador') {
-    // Páginas permitidas para COORDINADOR (sin SGC, sin Proyectos, etc.)
+  // COORDINADOR: solo Home y Coordinación (y login/logout)
+  if (is_coordinator()) {
+    // Normalizamos el script en formato relativo sin slash inicial
+    $script = ltrim(parse_url($_SERVER['SCRIPT_NAME'] ?? '', PHP_URL_PATH), '/');
+
+    // Whitelist estricta para coordinador
     $allowed = [
-      // ===== Informes (ver/editar) =====
-      'informe-registrados.php',
-      'carga_informe.php',
-      'editar_informe.php',
-      'guardar_informe.php',
-      'eliminar_informe.php',
-      'obtener_informes.php',
-
-      // ===== Secciones habilitadas =====
-      'coordinacion.php',
-      'circunscripcion1.php',
-      'oficina-penal1.php',
-      'oficina-civil1.php',
-      'oficina-familia1.php',
-      'oficina-ejecucion-cyq1.php',
-      'circunscripcion2.php',
-      'oficina-penal2.php',
-      'oficina-familia2.php',
-      'circunscripcion3.php',
-      'oficina-penal3-acha.php',
-      'oficina-penal3-25mayo.php',
-      'circunscripcion4.php',
-      'oficina-penal4.php',
-
-      // ===== Navegación básica =====
-      'index.php', 'login.php', 'login.html', 'logout.php',
+      'index.php',
+      'secciones/coordinacion.php',
+      // Login/Logout
+      'login/login.php','login/login.html','login/logout.php',
+      // (Opcional) Debug temporal de rol: QUITAR cuando termines
+      'tools/rol-debug.php',
+      // (Si Coordinación usa APIs propias, agregalas aquí)
+      // 'api/api-coordinacion.php',
     ];
 
     if (!in_array($script, $allowed, true)) {
       http_response_code(403);
-      if (_is_api_context()) {
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode(['error' => 'Acceso restringido para coordinadores.']);
-      } else {
-        echo 'Acceso restringido para coordinadores.';
-      }
+      echo 'Acceso restringido para coordinadores.';
       exit;
     }
   }
 
-  // secretaria: acceso completo
-  // otros roles no mapeados: acceso por defecto (ajustá si querés endurecer)
+  // secretaria (u otros): acceso completo
 }
 
 /* =========================
@@ -181,9 +137,9 @@ function enforce_route_access(): void {
    ========================= */
 function can_write_module(string $module): bool {
   $r = current_role();
-  if ($r === 'secretaria')  return true;                    // full
-  if ($r === 'coordinador') return ($module === 'informes'); // sólo Informes
-  // stj u otros: solo lectura
+  if ($r === 'secretaria') return true;                   // full
+  if (is_coordinator())   return ($module === 'coordinacion'); // solo Coordinación
+  // stj (u otro): solo lectura
   return false;
 }
 
@@ -203,7 +159,8 @@ function can_edit_ui(string $module): bool {
 }
 
 /* =========================
-   (Opcional) Bloqueo visual para STJ
+   (Opcional) Inyectar bloqueo visual para STJ
+   Llamalo en páginas con formularios: render_readonly_ui();
    ========================= */
 function render_readonly_ui(): void {
   if (current_role() !== 'stj') return;
