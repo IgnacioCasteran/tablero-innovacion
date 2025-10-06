@@ -5,12 +5,14 @@ if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 /* =========================
    Sesión / helpers básicos
    ========================= */
-function is_logged_in(): bool {
+function is_logged_in(): bool
+{
   return isset($_SESSION['usuario']);
 }
 
 /* Login URL robusto según ubicación actual (root o subcarpetas) */
-function _login_href(): string {
+function _login_href(): string
+{
   $self = $_SERVER['PHP_SELF'] ?? '';
   // si estamos en /secciones/* o /api/* -> usar ../login/
   if (str_contains($self, '/secciones/') || str_contains($self, '/api/')) {
@@ -19,7 +21,8 @@ function _login_href(): string {
   return 'login/login.html';
 }
 
-function require_login(): void {
+function require_login(): void
+{
   if (!is_logged_in()) {
     header('Location: ' . _login_href());
     exit();
@@ -29,23 +32,34 @@ function require_login(): void {
 /* =========================
    Rol de la sesión
    ========================= */
-function current_role_raw() {
+function current_role_raw()
+{
   // Ajustá keys si tu login guarda el rol en otra estructura
   return $_SESSION['rol'] ?? ($_SESSION['user']['rol'] ?? null);
 }
 
-function current_role(): ?string {
+function current_role(): ?string
+{
   $raw = current_role_raw();
   if ($raw === null) return null;
   $rol = mb_strtolower(trim((string)$raw));
   // quitar tildes (por si viene “Coordinadores”, etc.)
   return strtr($rol, [
-    'á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u',
-    'ä'=>'a','ë'=>'e','ï'=>'i','ö'=>'o','ü'=>'u'
+    'á' => 'a',
+    'é' => 'e',
+    'í' => 'i',
+    'ó' => 'o',
+    'ú' => 'u',
+    'ä' => 'a',
+    'ë' => 'e',
+    'ï' => 'i',
+    'ö' => 'o',
+    'ü' => 'u'
   ]);
 }
 
-function is_coordinator(): bool {
+function is_coordinator(): bool
+{
   $r = current_role();
   return ($r === 'coordinador' || $r === 'coordinadores' || strpos((string)$r, 'coordinador') === 0);
 }
@@ -53,15 +67,18 @@ function is_coordinator(): bool {
 /* =========================
    Solo lectura para STJ
    ========================= */
-function _is_post_like(string $m = null): bool {
+function _is_post_like(string $m = null): bool
+{
   $m = strtoupper($m ?? ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
-  return !in_array($m, ['GET','HEAD','OPTIONS'], true);
+  return !in_array($m, ['GET', 'HEAD', 'OPTIONS'], true);
 }
-function _is_api_context(): bool {
+function _is_api_context(): bool
+{
   $sn = $_SERVER['SCRIPT_NAME'] ?? '';
   return str_contains($sn, '/api/');
 }
-function _block_stj_if_writes(): void {
+function _block_stj_if_writes(): void
+{
   $role = current_role();
   if ($role !== 'stj') return;
 
@@ -70,9 +87,25 @@ function _block_stj_if_writes(): void {
 
   // Acciones de escritura que a veces llegan por GET (compat)
   $write_actions = [
-    'guardar','grabar','insert','alta','update','editar','modificar',
-    'finalizar','reabrir','eliminar','borrar','delete','destroy',
-    'remove','upload','subir','pin','fijar','desfijar'
+    'guardar',
+    'grabar',
+    'insert',
+    'alta',
+    'update',
+    'editar',
+    'modificar',
+    'finalizar',
+    'reabrir',
+    'eliminar',
+    'borrar',
+    'delete',
+    'destroy',
+    'remove',
+    'upload',
+    'subir',
+    'pin',
+    'fijar',
+    'desfijar'
   ];
 
   $tries_to_write = _is_post_like($method) || !empty($_FILES) || in_array($accion, $write_actions, true);
@@ -91,7 +124,8 @@ function _block_stj_if_writes(): void {
 /* =========================
    Acceso por rol a rutas
    ========================= */
-function enforce_route_access(): void {
+function enforce_route_access(): void
+{
   // Controlar solo requests a PHP (ignorar assets)
   $reqPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '';
   $ext = strtolower(pathinfo($reqPath, PATHINFO_EXTENSION));
@@ -107,7 +141,7 @@ function enforce_route_access(): void {
 
   // === Coordinador: whitelist estricta ===
   $r = mb_strtolower((string)$role);
-  $r = strtr($r, ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ä'=>'a','ë'=>'e','ï'=>'i','ö'=>'o','ü'=>'u']);
+  $r = strtr($r, ['á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ä' => 'a', 'ë' => 'e', 'ï' => 'i', 'ö' => 'o', 'ü' => 'u']);
   $isCoord = ($r === 'coordinador' || $r === 'coordinadores' || strpos($r, 'coordinador') === 0);
 
   if ($isCoord) {
@@ -119,21 +153,44 @@ function enforce_route_access(): void {
     // Archivos permitidos (union de lo tuyo + lo de infra si hiciera falta)
     $allowFiles = [
       // Home y autenticación (root y/o carpeta login)
-      'index.php', 'login.php', 'login.html', 'logout.php',
-      'login/login.php', 'login/login.html', 'login/logout.php',
+      'index.php',
+      'login.php',
+      'login.html',
+      'logout.php',
+      'login/login.php',
+      'login/login.html',
+      'login/logout.php',
 
       // Coordinación y navegación dentro de secciones
       'coordinacion.php',
-      'circunscripcion1.php', 'circunscripcion2.php', 'circunscripcion3.php', 'circunscripcion4.php',
-      'oficina-penal1.php', 'oficina-civil1.php', 'oficina-familia1.php', 'oficina-ejecucion-cyq1.php',
-      'oficina-penal2.php', 'oficina-familia2.php',
-      'oficina-penal3-acha.php', 'oficina-penal3-25mayo.php',
+      'circunscripcion1.php',
+      'circunscripcion2.php',
+      'circunscripcion3.php',
+      'circunscripcion4.php',
+      'oficina-penal1.php',
+      'oficina-civil1.php',
+      'oficina-familia1.php',
+      'oficina-ejecucion-cyq1.php',
+      'oficina-penal2.php',
+      'oficina-familia2.php',
+      'oficina-penal3-acha.php',
+      'oficina-penal3-25mayo.php',
       'oficina-penal4.php',
 
-      // Informes (si el coordinador debe poder verlos/editar)
-      'informe-registrados.php', 'carga_informe.php', 'editar_informe.php',
-      'guardar_informe.php', 'eliminar_informe.php', 'obtener_informes.php',
+      // NUEVO: vistas adicionales para coordinador (solo lectura/consulta)
+      'normativa.php',
+      'objetos-secuestrados.php',
+      'oficinas-judiciales.php',
+
+      // Informes (si el coordinador debe poder ver/editar)
+      'informe-registrados.php',
+      'carga_informe.php',
+      'editar_informe.php',
+      'guardar_informe.php',
+      'eliminar_informe.php',
+      'obtener_informes.php',
     ];
+
 
     // Aceptar también el path con carpeta secciones/*
     $allowPaths = array_merge(
@@ -159,7 +216,8 @@ function enforce_route_access(): void {
 /* =========================
    Permisos por módulo (tu lógica)
    ========================= */
-function can_write_module(string $module): bool {
+function can_write_module(string $module): bool
+{
   $r = current_role();
   if ($r === 'secretaria') return true;                   // full
   if (is_coordinator())   return ($module === 'coordinacion'); // solo Coordinación
@@ -168,7 +226,8 @@ function can_write_module(string $module): bool {
 }
 
 /** Corta en 403 (JSON) si no puede escribir en el módulo */
-function ensure_can_write(string $module): void {
+function ensure_can_write(string $module): void
+{
   if (!can_write_module($module)) {
     http_response_code(403);
     header('Content-Type: application/json; charset=utf-8');
@@ -178,7 +237,8 @@ function ensure_can_write(string $module): void {
 }
 
 /** Útil para la UI (ocultar/desactivar edición según módulo) */
-function can_edit_ui(string $module): bool {
+function can_edit_ui(string $module): bool
+{
   return can_write_module($module);
 }
 
@@ -186,7 +246,8 @@ function can_edit_ui(string $module): bool {
    (Opcional) Inyectar bloqueo visual para STJ
    Llamalo en páginas con formularios: render_readonly_ui();
    ========================= */
-function render_readonly_ui(): void {
+function render_readonly_ui(): void
+{
   if (current_role() !== 'stj') return;
   echo <<<HTML
 <script>
