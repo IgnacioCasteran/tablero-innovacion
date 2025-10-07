@@ -44,7 +44,7 @@ enforce_route_access();   // coord solo Informes, STJ solo lectura
 
       <!-- Protocolos -->
       <div class="col-md-4">
-        <a href="https://drive.google.com/drive/u/1/folders/1H3j0GoI3VgCh_b08pwBqKZjHAtrR8VZy" target="_blank"
+        <a href="https://drive.google.com/drive/u/1/folders/1SYjA2k66N-r-TLqauWGWqPM6BPd_bKgs" target="_blank"
            class="btn btn-outline-primary btn-lg w-100">
           📄 Protocolos
         </a>
