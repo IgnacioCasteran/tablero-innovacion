@@ -39,7 +39,7 @@ document.addEventListener("DOMContentLoaded", function () {
       "Otros requerimientos",
       "Sustituciones",
     ],
-    // NUEVO: LABORAL usa las mismas categorías que CIVIL
+    // LABORAL usa las mismas categorías que CIVIL
     LABORAL: [
       "Otras",
       "Licencias",
@@ -56,16 +56,12 @@ document.addEventListener("DOMContentLoaded", function () {
   function normalizarOficina(oficina) {
     const o = (oficina || "").toLowerCase();
 
-    // ECYQ => usar las categorías de CIVIL
-    if (
-      o.includes("ejecución concursos") ||
-      o.includes("ejecucion concursos") ||
-      o.includes("concursos y quiebras")
-    ) {
+    // ECyQ => categorías de CIVIL
+    if (o.includes("ejecución concursos") || o.includes("ejecucion concursos") || o.includes("concursos y quiebras")) {
       return "CIVIL";
     }
 
-    // NUEVO: Laboral
+    // LABORAL => categorías de CIVIL
     if (
       o.includes("gestión judicial laboral") ||
       o.includes("gestion judicial laboral") ||
@@ -75,15 +71,11 @@ document.addEventListener("DOMContentLoaded", function () {
       return "LABORAL";
     }
 
-    // Penal (incluye sedes sueltas o sub-sedes)
     if (o.includes("penal")) return "PENAL";
     if (o === "ciudad general acha" || o === "ciudad 25 de mayo") return "PENAL";
 
-    // Civil
-    if (o.includes("gestión común civil") || o.includes("gestion comun civil"))
-      return "CIVIL";
+    if (o.includes("gestión común civil") || o.includes("gestion comun civil")) return "CIVIL";
 
-    // Familia
     if (
       o.includes("gestión judicial de familia") ||
       o.includes("gestion judicial de familia") ||
@@ -136,15 +128,13 @@ document.addEventListener("DOMContentLoaded", function () {
      EMPLEADOS (según Circ + Oficina)
      =============================== */
   const empleadosPorClave = {
-    // --- NUEVO: Ejecución, Concursos y Quiebras – 1ª Circunscripción ---
+    // ECyQ – I CJ
     ECYQ_I: [
       "NO CORRESPONDE",
-      // Unidad de Atención Primaria y Despacho de Mero Trámite
       "CUÑADO, Hugo",
       "Galant, Flavia Lorena",
       "Fernandez Lamongesse, Javier Ignacio",
       "Garcia Panelo, Oscar Amadeo",
-      // Unidad Contable y de Concursos y Quiebras
       "Dasso, Lisandro",
       "Casado Martínez, Claudio Alfredo",
       "Barón, Fernando Manuel",
@@ -153,7 +143,6 @@ document.addEventListener("DOMContentLoaded", function () {
       "Manavella, Marcela Noemí",
       "Videla, Ana Paula",
       "Cornejo, Maria De Los Ángeles",
-      // Unidad de Despacho
       "Barth, Silvina",
       "Ortega, Romina Silvana",
       "Paoletti, Vanesa Soledad",
@@ -168,10 +157,25 @@ document.addEventListener("DOMContentLoaded", function () {
       "Ovando Lucero, Osvaldo Anselmo",
     ],
 
-    // NUEVO: Laboral – 2ª Circunscripción (placeholder; luego cargamos la nómina)
-    LABORAL_II: ["NO CORRESPONDE"],
+    // **LABORAL – II CJ** (incluye responsables a cargo)
+    LABORAL_II: [
+      "NO CORRESPONDE",
+      // Unidad de Atención al Público y Trámites organizativos
+      "VARGAS, Javier Leonardo",
+      "ELEICEGUI, Silvia",
+      // Unidades de Despacho y Seguimiento de Causas Nº 1
+      "CONSTANTINO, María Julia",
+      "GONZALO, Verónica Silvana",
+      "STAGNARO, Noelia Nancy",
+      "MUÑOZ, Rosana Maribel",
+      // Unidades de Despacho y Seguimiento de Causas Nº 2
+      "PAGANO, Ana Belén",
+      "LÓPEZ DARDANELLI, Gisela Tania",
+      "RIZZATTO, Ester",
+      "FERNÁNDEZ, Marcela Inés",
+    ],
 
-    // Lo que ya tenías
+    // Resto
     PENAL_III: [
       "NO CORRESPONDE",
       "AMPUDIA, Orlando Javier",
@@ -364,49 +368,25 @@ document.addEventListener("DOMContentLoaded", function () {
     const c  = (circ || "").toUpperCase(); // I, II, III, IV
     const of = (oficina || "").toLowerCase();
 
-    // ECYQ
-    if (
-      of.includes("ejecución concursos") ||
-      of.includes("ejecucion concursos") ||
-      of.includes("concursos y quiebras")
-    ) {
+    if (of.includes("ejecución concursos") || of.includes("ejecucion concursos") || of.includes("concursos y quiebras")) {
       if (c === "I") return "ECYQ_I";
     }
 
-    // LABORAL (por ahora solo II CJ)
-    if (
-      of.includes("gestión judicial laboral") ||
-      of.includes("gestion judicial laboral") ||
-      of.includes("gestion laboral") ||
-      of.includes("laboral")
-    ) {
+    if (of.includes("gestión judicial laboral") || of.includes("gestion judicial laboral") || of.includes("gestion laboral") || of.includes("laboral")) {
       if (c === "II") return "LABORAL_II";
     }
 
-    // Penal
-    if (
-      of.includes("penal") ||
-      of === "judicial penal" ||
-      of === "ciudad general acha" ||
-      of === "ciudad 25 de mayo"
-    ) {
+    if (of.includes("penal") || of === "judicial penal" || of === "ciudad general acha" || of === "ciudad 25 de mayo") {
       if (c === "I")  return "PENAL_I";
       if (c === "II") return "PENAL_II";
       if (c === "III")return "PENAL_III";
       if (c === "IV") return "PENAL_IV";
     }
 
-    // Civil
-    if (of.includes("gestión común civil") || of.includes("gestion comun civil"))
-      return "CIVIL";
+    if (of.includes("gestión común civil") || of.includes("gestion comun civil")) return "CIVIL";
 
-    // Familia
-    if (
-      of.includes("gestión judicial de familia") ||
-      of.includes("gestion judicial de familia") ||
-      of.includes("gestión común familia") ||
-      of.includes("gestion comun familia")
-    ) {
+    if (of.includes("gestión judicial de familia") || of.includes("gestion judicial de familia") ||
+        of.includes("gestión común familia")       || of.includes("gestion comun familia")) {
       if (c === "I")  return "FAMILIA_I";
       if (c === "II") return "FAMILIA_II";
     }
