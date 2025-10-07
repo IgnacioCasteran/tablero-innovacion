@@ -91,6 +91,7 @@ function enforce_route_access(): void {
       'oficina-penal2.php','oficina-familia2.php',
       'oficina-penal3-acha.php','oficina-penal3-25mayo.php',
       'oficina-penal4.php',
+      'oficina-laboral2.php',
 
       // ✅ Nuevas vistas habilitadas para coordinador
       'normativa.php',

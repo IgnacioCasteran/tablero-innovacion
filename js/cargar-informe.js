@@ -1,11 +1,11 @@
 document.addEventListener("DOMContentLoaded", function () {
   const form = document.querySelector("form");
   const categoriaSelect = document.getElementById("categoriaSelect");
-  const categoriaInput = document.getElementById("categoriaInput");
-  const oficinaSelect = document.getElementById("oficina_judicial");
-  const circSelect = document.getElementById("circunscripcion");
-  const responsableInput = document.getElementById("responsable");
-  const empleadoSelect = document.getElementById("empleado");
+  const categoriaInput  = document.getElementById("categoriaInput");
+  const oficinaSelect   = document.getElementById("oficina_judicial");
+  const circSelect      = document.getElementById("circunscripcion");
+  const responsableInput= document.getElementById("responsable");
+  const empleadoSelect  = document.getElementById("empleado");
 
   /* ===============================
      CATEGORÍAS (según tipo Oficina)
@@ -39,6 +39,18 @@ document.addEventListener("DOMContentLoaded", function () {
       "Otros requerimientos",
       "Sustituciones",
     ],
+    // NUEVO: LABORAL usa las mismas categorías que CIVIL
+    LABORAL: [
+      "Otras",
+      "Licencias",
+      "Otros requerimientos",
+      "General",
+      "Bonificaciones",
+      "Concursos de ascenso",
+      "Sustituciones",
+      "Ingreso",
+      "Solicitudes SIGE",
+    ],
   };
 
   function normalizarOficina(oficina) {
@@ -53,10 +65,19 @@ document.addEventListener("DOMContentLoaded", function () {
       return "CIVIL";
     }
 
+    // NUEVO: Laboral
+    if (
+      o.includes("gestión judicial laboral") ||
+      o.includes("gestion judicial laboral") ||
+      o.includes("gestion laboral") ||
+      o.includes("laboral")
+    ) {
+      return "LABORAL";
+    }
+
     // Penal (incluye sedes sueltas o sub-sedes)
     if (o.includes("penal")) return "PENAL";
-    if (o === "ciudad general acha" || o === "ciudad 25 de mayo")
-      return "PENAL";
+    if (o === "ciudad general acha" || o === "ciudad 25 de mayo") return "PENAL";
 
     // Civil
     if (o.includes("gestión común civil") || o.includes("gestion comun civil"))
@@ -68,8 +89,9 @@ document.addEventListener("DOMContentLoaded", function () {
       o.includes("gestion judicial de familia") ||
       o.includes("gestión común familia") ||
       o.includes("gestion comun familia")
-    )
+    ) {
       return "FAMILIA";
+    }
 
     return null;
   }
@@ -112,7 +134,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   /* ===============================
      EMPLEADOS (según Circ + Oficina)
-     Agrego ECYQ_I (Ejecución, Concursos y Quiebras – 1ª CJ)
      =============================== */
   const empleadosPorClave = {
     // --- NUEVO: Ejecución, Concursos y Quiebras – 1ª Circunscripción ---
@@ -123,7 +144,6 @@ document.addEventListener("DOMContentLoaded", function () {
       "Galant, Flavia Lorena",
       "Fernandez Lamongesse, Javier Ignacio",
       "Garcia Panelo, Oscar Amadeo",
-
       // Unidad Contable y de Concursos y Quiebras
       "Dasso, Lisandro",
       "Casado Martínez, Claudio Alfredo",
@@ -133,7 +153,6 @@ document.addEventListener("DOMContentLoaded", function () {
       "Manavella, Marcela Noemí",
       "Videla, Ana Paula",
       "Cornejo, Maria De Los Ángeles",
-
       // Unidad de Despacho
       "Barth, Silvina",
       "Ortega, Romina Silvana",
@@ -148,6 +167,9 @@ document.addEventListener("DOMContentLoaded", function () {
       "Kloster, Ivana Maribel",
       "Ovando Lucero, Osvaldo Anselmo",
     ],
+
+    // NUEVO: Laboral – 2ª Circunscripción (placeholder; luego cargamos la nómina)
+    LABORAL_II: ["NO CORRESPONDE"],
 
     // Lo que ya tenías
     PENAL_III: [
@@ -339,17 +361,26 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Determina la clave según circunscripción + oficina
   function claveEmpleados(circ, oficina) {
-    const c = (circ || "").toUpperCase(); // I, II, III, IV
+    const c  = (circ || "").toUpperCase(); // I, II, III, IV
     const of = (oficina || "").toLowerCase();
 
-    // --- NUEVO: Ejecución, Concursos y Quiebras ---
-    // Coincidencias robustas por si cambia el texto
+    // ECYQ
     if (
       of.includes("ejecución concursos") ||
       of.includes("ejecucion concursos") ||
       of.includes("concursos y quiebras")
     ) {
-      if (c === "I") return "ECYQ_I"; // 1ª Circunscripción (Nros. 1 y 2)
+      if (c === "I") return "ECYQ_I";
+    }
+
+    // LABORAL (por ahora solo II CJ)
+    if (
+      of.includes("gestión judicial laboral") ||
+      of.includes("gestion judicial laboral") ||
+      of.includes("gestion laboral") ||
+      of.includes("laboral")
+    ) {
+      if (c === "II") return "LABORAL_II";
     }
 
     // Penal
@@ -359,17 +390,14 @@ document.addEventListener("DOMContentLoaded", function () {
       of === "ciudad general acha" ||
       of === "ciudad 25 de mayo"
     ) {
-      if (c === "I") return "PENAL_I";
+      if (c === "I")  return "PENAL_I";
       if (c === "II") return "PENAL_II";
-      if (c === "III") return "PENAL_III";
+      if (c === "III")return "PENAL_III";
       if (c === "IV") return "PENAL_IV";
     }
 
     // Civil
-    if (
-      of.includes("gestión común civil") ||
-      of.includes("gestion comun civil")
-    )
+    if (of.includes("gestión común civil") || of.includes("gestion comun civil"))
       return "CIVIL";
 
     // Familia
@@ -379,7 +407,7 @@ document.addEventListener("DOMContentLoaded", function () {
       of.includes("gestión común familia") ||
       of.includes("gestion comun familia")
     ) {
-      if (c === "I") return "FAMILIA_I";
+      if (c === "I")  return "FAMILIA_I";
       if (c === "II") return "FAMILIA_II";
     }
 
@@ -389,10 +417,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function actualizarEmpleados() {
     if (!empleadoSelect) return;
     const clave = claveEmpleados(circSelect?.value, oficinaSelect?.value);
-    const lista =
-      clave && empleadosPorClave[clave]
-        ? empleadosPorClave[clave]
-        : ["NO CORRESPONDE"];
+    const lista = (clave && empleadosPorClave[clave]) ? empleadosPorClave[clave] : ["NO CORRESPONDE"];
     poblarSelect(empleadoSelect, lista);
   }
   window.actualizarEmpleados = actualizarEmpleados;
@@ -404,7 +429,6 @@ document.addEventListener("DOMContentLoaded", function () {
   if (responsableInput) {
     const respGuardado = sessionStorage.getItem(RESPONSABLE_KEY);
     if (respGuardado) responsableInput.value = respGuardado;
-
     responsableInput.addEventListener("input", () => {
       sessionStorage.setItem(RESPONSABLE_KEY, responsableInput.value || "");
     });
@@ -434,15 +458,8 @@ document.addEventListener("DOMContentLoaded", function () {
       e.preventDefault();
 
       const campos = [
-        "circunscripcion",
-        "oficina_judicial",
-        "responsable",
-        "desde",
-        "hasta",
-        "rubro",
-        "empleado",
-        "descripcion",
-        "estado",
+        "circunscripcion","oficina_judicial","responsable","desde","hasta",
+        "rubro","empleado","descripcion","estado",
       ];
       for (const campo of campos) {
         const el = document.getElementById(campo);
@@ -453,31 +470,29 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       }
 
-      const selectVisible = !categoriaSelect.classList.contains("d-none");
-      const categoriaValor = (
-        selectVisible ? categoriaSelect.value : categoriaInput.value
-      ).trim();
+      const selectVisible  = !categoriaSelect.classList.contains("d-none");
+      const categoriaValor = (selectVisible ? categoriaSelect.value : categoriaInput.value).trim();
       if (!categoriaValor) {
         alert("Por favor completá la categoría.");
         return;
       }
 
       const datos = {
-        circunscripcion: document.getElementById("circunscripcion").value,
+        circunscripcion : document.getElementById("circunscripcion").value,
         oficina_judicial: document.getElementById("oficina_judicial").value,
-        responsable: document.getElementById("responsable").value,
-        desde: document.getElementById("desde").value,
-        hasta: document.getElementById("hasta").value,
-        rubro: document.getElementById("rubro").value,
-        categoria: categoriaValor,
-        empleado: document.getElementById("empleado").value,
-        descripcion: document.getElementById("descripcion").value,
-        observaciones: document.getElementById("observaciones").value,
-        estado: document.getElementById("estado").value,
+        responsable     : document.getElementById("responsable").value,
+        desde           : document.getElementById("desde").value,
+        hasta           : document.getElementById("hasta").value,
+        rubro           : document.getElementById("rubro").value,
+        categoria       : categoriaValor,
+        empleado        : document.getElementById("empleado").value,
+        descripcion     : document.getElementById("descripcion").value,
+        observaciones   : document.getElementById("observaciones").value,
+        estado          : document.getElementById("estado").value,
       };
 
       try {
-        const response = await fetch("guardar_informe.php", {
+        const response  = await fetch("guardar_informe.php", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(datos),
@@ -485,14 +500,10 @@ document.addEventListener("DOMContentLoaded", function () {
         const resultado = await response.json();
 
         if (resultado.success) {
-          const modal = new bootstrap.Modal(
-            document.getElementById("modalConfirmacion")
-          );
+          const modal = new bootstrap.Modal(document.getElementById("modalConfirmacion"));
           modal.show();
 
-          const responsableActual = responsableInput
-            ? responsableInput.value
-            : "";
+          const responsableActual = responsableInput ? responsableInput.value : "";
           form.reset();
           if (responsableInput) {
             responsableInput.value = responsableActual;
