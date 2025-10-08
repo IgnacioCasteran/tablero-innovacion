@@ -1,8 +1,46 @@
 let datosGlobales = []; // Guardamos los informes una vez cargados
 
+function lockScopeFilters() {
+  const scope = window.USER_SCOPE || {};
+  const rol = String(scope.rol || '').toLowerCase();
+  const isCoord = rol.startsWith('coordinador');
+
+  if (!isCoord) return; // STJ y Secretaría: sin bloqueo
+
+  const selCirc = document.getElementById('filtroCirc');
+  const selOfi  = document.getElementById('filtroOficina');
+
+  // Si tiene circunscripción asignada, fijarla y bloquearla
+  if (scope.circ) {
+    selCirc.value = scope.circ;
+    selCirc.disabled = true;
+    selCirc.title = 'Bloqueado por alcance';
+    // repoblar oficinas en base a esa circ
+    actualizarOficinas();
+  }
+
+  // Si tiene oficina asignada, fijarla y bloquearla
+  if (scope.oficina) {
+    // Si aún no existe en el select (p.ej., no hay informes cargados),
+    // la agregamos para poder seleccionarla.
+    const exists = [...selOfi.options].some(o => o.value === scope.oficina);
+    if (!exists) {
+      const opt = document.createElement('option');
+      opt.value = scope.oficina;
+      opt.textContent = scope.oficina;
+      selOfi.appendChild(opt);
+    }
+    selOfi.value = scope.oficina;
+    selOfi.disabled = true;
+    selOfi.title = 'Bloqueado por alcance';
+  }
+}
+
 // Esta función se llama cuando se cargan los informes desde PHP
 function setDatos(informes) {
   datosGlobales = informes;
+    // Bloquear selects según alcance (coordinadores)
+  if (typeof lockScopeFilters === 'function') lockScopeFilters();
   aplicarFiltros();
   generarGraficosYEstadisticas(datosGlobales);
 }

@@ -21,6 +21,31 @@ render_readonly_ui();
 </head>
 
 <body>
+    <?php
+    // Inyectamos en JS el rol y el alcance del usuario logueado
+    require_once __DIR__ . '/conexion.php';
+
+    $scope = ['rol' => current_role(), 'circ' => null, 'oficina' => null];
+    try {
+        $cn = db();
+        $uid = (int)($_SESSION['user_id'] ?? 0);
+        if ($uid > 0) {
+            $st = $cn->prepare("SELECT alcance_circ, alcance_oficina FROM usuarios WHERE id=? LIMIT 1");
+            $st->bind_param("i", $uid);
+            $st->execute();
+            if ($u = $st->get_result()->fetch_assoc()) {
+                $scope['circ']    = $u['alcance_circ'] ?? null;
+                $scope['oficina'] = $u['alcance_oficina'] ?? null;
+            }
+            $st->close();
+        }
+    } catch (Throwable $e) { /* silencioso */
+    }
+    ?>
+    <script>
+        // Disponible para filtros.js
+        window.USER_SCOPE = <?= json_encode($scope, JSON_UNESCAPED_UNICODE) ?>;
+    </script>
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
