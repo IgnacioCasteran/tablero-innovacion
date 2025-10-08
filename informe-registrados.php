@@ -58,7 +58,7 @@ render_readonly_ui();
                 <ul class="nav flex-column mt-4">
                     <li class="nav-item"><a class="nav-link" href="carga_informe.php">Carga de Informe Periódico</a></li>
                     <li class="nav-item"><a class="nav-link active" href="informe-registrados.php">Informes Registrados</a></li>
-                    <li class="nav-item"><a class="nav-link text-danger" href="logout.php">Cerrar sesión</a></li>
+                    <li class="nav-item"><a class="nav-link text-danger" href="/login/logout.php">Cerrar sesión</a></li>
                 </ul>
 
             </nav>
