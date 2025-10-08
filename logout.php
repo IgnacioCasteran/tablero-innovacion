@@ -1,4 +1,4 @@
-// /logout.php (en raíz)
 <?php
-header('Location: /login/logout.php');
+// redirige al canónico
+header('Location: /login/logout.php', true, 302);
 exit;
