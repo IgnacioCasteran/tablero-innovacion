@@ -2,23 +2,56 @@
 // guardar_informe.php
 header('Content-Type: application/json; charset=utf-8');
 require_once __DIR__ . '/conexion.php';
+if (session_status() !== PHP_SESSION_ACTIVE) session_start();
+
+function role_slug($r) {
+  $r = mb_strtolower(trim((string)$r));
+  return strtr($r, ['á'=>'a','é'=>'e','í'=>'i','ó'=>'o','ú'=>'u','ä'=>'a','ë'=>'e','ï'=>'i','ö'=>'o','ü'=>'u']);
+}
+function is_coord($r) { return substr(role_slug($r), 0, 11) === 'coordinador'; }
 
 try {
   $cn = db();
+  $cn->set_charset('utf8mb4');
 
-  // Leer datos enviados en JSON
   $data = json_decode(file_get_contents("php://input"), true);
-
   if (!$data) {
     http_response_code(400);
     echo json_encode(["success" => false, "error" => "No se recibieron datos"]);
     exit;
   }
 
-  // Preparar INSERT (ajusta nombres de columnas si cambian en tu tabla)
+  $rol = role_slug($_SESSION['rol'] ?? '');
+  if ($rol === 'stj') {
+    http_response_code(403);
+    echo json_encode(["success" => false, "error" => "Solo lectura (STJ)"]);
+    exit;
+  }
+
+  // Validación de alcance para coordinadores
+  if (is_coord($rol)) {
+    $uid = (int)($_SESSION['user_id'] ?? 0);
+    $stU = $cn->prepare("SELECT alcance_circ, alcance_oficina FROM usuarios WHERE id=? LIMIT 1");
+    $stU->bind_param("i", $uid);
+    $stU->execute();
+    $scope = $stU->get_result()->fetch_assoc() ?: ['alcance_circ'=>null, 'alcance_oficina'=>null];
+    $stU->close();
+
+    if (!empty($scope['alcance_circ']) && $scope['alcance_circ'] !== ($data['circunscripcion'] ?? '')) {
+      http_response_code(403);
+      echo json_encode(["success" => false, "error" => "Sin permiso (circunscripción)"]);
+      exit;
+    }
+    if (!empty($scope['alcance_oficina']) && $scope['alcance_oficina'] !== ($data['oficina_judicial'] ?? '')) {
+      http_response_code(403);
+      echo json_encode(["success" => false, "error" => "Sin permiso (oficina)"]);
+      exit;
+    }
+  }
+
   $sql = "INSERT INTO informes (
-            circunscripcion, oficina_judicial, responsable, 
-            desde, hasta, rubro, categoria, empleado, estado, 
+            circunscripcion, oficina_judicial, responsable,
+            desde, hasta, rubro, categoria, empleado, estado,
             descripcion, observaciones
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 

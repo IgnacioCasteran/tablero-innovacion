@@ -5,8 +5,13 @@ require_login();          // exige sesión
 enforce_route_access();   // coord solo Informes, STJ solo lectura
 render_readonly_ui();
 ?>
+<?php
+$scope = user_scope();
+$rol   = current_role();
+?>
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -14,7 +19,15 @@ render_readonly_ui();
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="css/estilos-index.css">
+  <script>
+    window.USER_SCOPE = {
+      rol: '<?= htmlspecialchars((string)$rol) ?>',
+      circ: <?= $scope['circ'] !== null ? "'" . addslashes($scope['circ']) . "'" : 'null' ?>,
+      oficina: <?= $scope['oficina'] !== null ? "'" . addslashes($scope['oficina']) . "'" : 'null' ?>
+    };
+  </script>
 </head>
+
 <body>
   <div class="container-fluid">
     <div class="row">
@@ -163,12 +176,12 @@ render_readonly_ui();
         "Oficina de Gestión Judicial Laboral"
       ],
       III: ["Oficina Judicial Penal", "Ciudad General Acha", "Ciudad 25 de Mayo"],
-      IV:  ["Judicial Penal"]
+      IV: ["Judicial Penal"]
     };
 
     /** Pobla el select de oficinas y preselecciona si corresponde */
     function actualizarOficinas(circValue = null, preselect = null) {
-      const circSel    = document.getElementById("circunscripcion");
+      const circSel = document.getElementById("circunscripcion");
       const oficinaSel = document.getElementById("oficina_judicial");
 
       const circ = (circValue ?? circSel.value) || "";
@@ -193,7 +206,7 @@ render_readonly_ui();
 
       // 🔁 Notificar a los dependientes (si están cargados)
       if (typeof window.actualizarCategorias === "function") window.actualizarCategorias();
-      if (typeof window.actualizarEmpleados  === "function") window.actualizarEmpleados();
+      if (typeof window.actualizarEmpleados === "function") window.actualizarEmpleados();
     }
 
     // ===== Persistencia en localStorage =====
@@ -210,13 +223,13 @@ render_readonly_ui();
         } else if (id === "oficina_judicial") {
           // al cambiar de oficina, refrescar dependientes
           if (typeof window.actualizarCategorias === "function") window.actualizarCategorias();
-          if (typeof window.actualizarEmpleados  === "function") window.actualizarEmpleados();
+          if (typeof window.actualizarEmpleados === "function") window.actualizarEmpleados();
         }
       });
     }
 
     document.addEventListener("DOMContentLoaded", () => {
-      const circSel    = document.getElementById("circunscripcion");
+      const circSel = document.getElementById("circunscripcion");
 
       // escuchar cambios para guardar
       persistOnChange("circunscripcion");
@@ -233,7 +246,7 @@ render_readonly_ui();
 
       // Tras poblar, refrescar dependientes (por si quedaron valores guardados)
       if (typeof window.actualizarCategorias === "function") window.actualizarCategorias();
-      if (typeof window.actualizarEmpleados  === "function") window.actualizarEmpleados();
+      if (typeof window.actualizarEmpleados === "function") window.actualizarEmpleados();
 
       // Si después de guardar estás haciendo form.reset(), re-aplicamos inmediatamente
       const form = document.querySelector("form");
@@ -247,9 +260,41 @@ render_readonly_ui();
         });
       }
     });
+
+    function aplicarAlcanceUI() {
+      const S = window.USER_SCOPE || {};
+      const circSel = document.getElementById('circunscripcion');
+      const ofSel = document.getElementById('oficina_judicial');
+
+      // Si tiene circunscripción fija
+      if (S.circ) {
+        circSel.value = S.circ;
+        // Dejar solo esa opción visible
+        [...circSel.options].forEach(o => {
+          if (o.value !== S.circ) o.remove();
+        });
+        circSel.setAttribute('disabled', 'disabled');
+        actualizarOficinas(S.circ, null); // repoblar oficinas de esa circ
+      } else {
+        actualizarOficinas(); // caso sin alcance (secretaría/STJ)
+      }
+
+      // Si además tiene una oficina fija
+      if (S.oficina) {
+        // Asegura que exista en la lista y la preselecciona
+        actualizarOficinas(S.circ || circSel.value, S.oficina);
+        [...ofSel.options].forEach(o => {
+          if (o.value !== S.oficina) o.remove();
+        });
+        ofSel.setAttribute('disabled', 'disabled');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', aplicarAlcanceUI);
   </script>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="js/cargar-informe.js"></script>
 </body>
+
 </html>

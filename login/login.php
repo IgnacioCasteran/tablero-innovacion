@@ -18,10 +18,16 @@ if ($email === '' || $password === '') {
     exit();
 }
 
-$stmt = $cn->prepare("SELECT id, nombre, email, password, rol FROM usuarios WHERE email = ? LIMIT 1");
+// ⬇️ Traemos también alcance_circ y alcance_oficina
+$stmt = $cn->prepare("
+    SELECT id, nombre, email, password, rol, alcance_circ, alcance_oficina
+    FROM usuarios
+    WHERE email = ?
+    LIMIT 1
+");
 $stmt->bind_param("s", $email);
 $stmt->execute();
-$stmt->bind_result($id, $nombre, $mail, $hash, $rol);
+$stmt->bind_result($id, $nombre, $mail, $hash, $rol, $alcCirc, $alcOfi);
 
 $ok = false;
 if ($stmt->fetch() && password_verify($password, $hash)) {
@@ -39,15 +45,29 @@ if ($ok) {
     $_SESSION['user_id'] = (int)$id;
     $_SESSION['rol']     = $rol ?: 'secretaria';  // 'secretaria' | 'coordinador' | 'stj'
 
-    header("Location: ../index.php");             // dejé tu redirección original
+    // ⬇️ NUEVO: alcance del coordinador (o null si no aplica)
+    $_SESSION['alcance_circ']   = ($alcCirc !== null && $alcCirc !== '') ? $alcCirc : null;
+    $_SESSION['alcance_oficina']= ($alcOfi  !== null && $alcOfi  !== '') ? $alcOfi  : null;
+
+    // opcional: snapshot completo para helpers que lean $_SESSION['user']
+    $_SESSION['user'] = [
+        'id'             => (int)$id,
+        'nombre'         => $nombre ?? '',
+        'email'          => $mail,
+        'rol'            => $_SESSION['rol'],
+        'alcance_circ'   => $_SESSION['alcance_circ'],
+        'alcance_oficina'=> $_SESSION['alcance_oficina'],
+    ];
+
+    header("Location: ../index.php");
     exit();
 }
 
 // credenciales inválidas
-// (pequeño delay para desmotivar fuerza bruta)
 usleep(300000);
 header("Location: ./login.html?error=1");
 exit();
+
 
 
 
