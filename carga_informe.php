@@ -40,7 +40,7 @@ $rol   = current_role();
         <ul class="nav flex-column mt-4">
           <li class="nav-item"><a class="nav-link active" href="#">Inicio</a></li>
           <li class="nav-item"><a class="nav-link" href="informe-registrados.php">Informes Registrados</a></li>
-          <li class="nav-item"><a class="nav-link text-danger" href="logout.php">Cerrar sesión</a></li>
+          <li class="nav-item"><a class="nav-link text-danger" href="/login/logout.php">Cerrar sesión</a></li>
         </ul>
       </nav>
 
