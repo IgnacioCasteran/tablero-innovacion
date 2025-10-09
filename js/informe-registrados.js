@@ -135,7 +135,7 @@ async function cargarInformes() {
       addCell(tr, safe(inf.descripcion));
       addCell(tr, safe(inf.observaciones));
 
-      // Acciones (según permisos opcionales del backend)
+      // Acciones
       const puedeEditar = ('can_edit' in inf) ? !!inf.can_edit : true;
       const puedeBorrar = ('can_delete' in inf) ? !!inf.can_delete : true;
 
@@ -212,18 +212,32 @@ function addCell(tr, text) {
   tr.appendChild(td);
 }
 
-// --- Modales ---
-function abrirModalEditarDesdeBtn(btn) {
-  document.getElementById('editarId').value = btn.dataset.id ?? '';
-  document.getElementById('editarResponsable').value = btn.dataset.responsable ?? '';
-  document.getElementById('editarEmpleado').value = btn.dataset.empleado ?? '';
-  document.getElementById('editarDesde').value = btn.dataset.desde ?? '';
-  document.getElementById('editarHasta').value = btn.dataset.hasta ?? '';
-  document.getElementById('editarRubro').value = btn.dataset.rubro ?? '';
-  document.getElementById('editarCategoria').value = btn.dataset.categoria ?? '';
-  document.getElementById('editarDescripcion').value = btn.dataset.descripcion ?? '';
-  document.getElementById('editarObservaciones').value = btn.dataset.observaciones ?? '';
+// --- Helpers para modales ---
+function llenarModalDesdeObjeto(inf = {}) {
+  document.getElementById('editarId').value = inf.id ?? '';
+  document.getElementById('editarResponsable').value = inf.responsable ?? '';
+  document.getElementById('editarEmpleado').value = inf.empleado ?? '';
+  document.getElementById('editarDesde').value = inf.desde ?? '';
+  document.getElementById('editarHasta').value = inf.hasta ?? '';
+  document.getElementById('editarRubro').value = inf.rubro ?? '';
+  document.getElementById('editarCategoria').value = inf.categoria ?? '';
+  document.getElementById('editarDescripcion').value = inf.descripcion ?? '';
+  document.getElementById('editarObservaciones').value = inf.observaciones ?? '';
+}
 
+function abrirModalEditarDesdeBtn(btn) {
+  const inf = {
+    id: btn.dataset.id,
+    responsable: btn.dataset.responsable,
+    empleado: btn.dataset.empleado,
+    desde: btn.dataset.desde,
+    hasta: btn.dataset.hasta,
+    rubro: btn.dataset.rubro,
+    categoria: btn.dataset.categoria,
+    descripcion: btn.dataset.descripcion,
+    observaciones: btn.dataset.observaciones,
+  };
+  llenarModalDesdeObjeto(inf);
   new bootstrap.Modal(document.getElementById('modalEditar')).show();
 }
 
@@ -231,3 +245,21 @@ function abrirModalEliminar(id) {
   window.idAEliminar = id;
   new bootstrap.Modal(document.getElementById('modalEliminar')).show();
 }
+
+// ====== EXPONER FUNCIONES GLOBALES PARA onclick ======
+// Soporta que filtros.js llame abrirModalEditar(informe) inline
+window.abrirModalEditar = function (informe) {
+  // Puede venir como objeto literal (lo más común). Si viniera como JSON string, intentamos parsear.
+  let inf = informe;
+  if (typeof informe === 'string') {
+    try { inf = JSON.parse(informe); } catch { inf = {}; }
+  }
+  if (!inf || typeof inf !== 'object') inf = {};
+  llenarModalDesdeObjeto(inf);
+  new bootstrap.Modal(document.getElementById('modalEditar')).show();
+};
+
+window.abrirModalEliminar = function (id) {
+  abrirModalEliminar(id);
+};
+
