@@ -110,5 +110,5 @@ El proyecto fue desarrollado y probado en el siguiente entorno:
 ---
 
 **Autor:** Ignacio Casteran  
-**Contacto:** icasteran@juslapampa.gob.ar
+**Contacto:** ignaciocasteran18@gmail.com
 
