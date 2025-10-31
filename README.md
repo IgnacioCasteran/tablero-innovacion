@@ -8,7 +8,7 @@ Centralizar accesos y operaciones frecuentes del personal (carga de informes, co
 
 ## Tecnologías
 
-- **PHP 8+** (no framework)
+- **PHP 8+** 
 - **HTML5, CSS3 (Bootstrap 5), JavaScript**
 - **MySQL/MariaDB** (script: `informes_pj.sql`)
 - **GitLab** para versionado
